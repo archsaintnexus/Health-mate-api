@@ -122,5 +122,5 @@ export interface UserProfile {
 export const authApi = {
   signup: (data: SignupRequest) => apiClient.post<SignupResponse>('/auth/signup', data),
   login: (data: LoginRequest) => apiClient.post<LoginResponse>('/auth/login', data),
-  getProfile: () => apiClient.get<UserProfile>('/users/me'),
+  getProfile: () => apiClient.get<UserProfile>('/auth/me'),
 }

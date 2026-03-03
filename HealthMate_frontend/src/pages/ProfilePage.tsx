@@ -1,13 +1,63 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader'
-import { User, Mail, Phone, MapPin, Edit2, Save } from 'lucide-react'
+import { Mail, Phone, MapPin, Edit2, Save } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
+import { apiClient, UserProfile } from '@/lib/api'
 
 export default function ProfilePage() {
-  const { firstName } = useAuth()
+  const { setFirstName } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [form, setForm] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    address: '',
+  })
+
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const data = await apiClient.get<UserProfile>('/auth/me')
+        setForm({
+          first_name: data.first_name || '',
+          last_name: data.last_name || '',
+          email: data.email || '',
+          phone: '',
+          address: '',
+        })
+      } catch (err) {
+        console.error('Failed to fetch profile', err)
+      }
+    }
+    fetchMe()
+  }, [])
+
+  const handleSave = async () => {
+    setLoading(true)
+    try {
+      const data = await apiClient.put<UserProfile>('/auth/me', {
+        first_name: form.first_name,
+        last_name: form.last_name,
+        email: form.email,
+      })
+      setForm(prev => ({
+        ...prev,
+        first_name: data.first_name || '',
+        last_name: data.last_name || '',
+        email: data.email || '',
+      }))
+      setFirstName(data.first_name)
+      setIsEditing(false)
+    } catch (err) {
+      console.error('Failed to update profile', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0f1e]">
@@ -27,21 +77,18 @@ export default function ProfilePage() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setIsEditing(!isEditing)}
+                onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+                disabled={loading}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
                   isEditing
                     ? 'bg-[#00d4aa] text-[#0a0f1e]'
                     : 'bg-white/10 text-white hover:bg-white/20'
-                } transition-all`}
+                } transition-all disabled:opacity-50`}
               >
                 {isEditing ? (
-                  <>
-                    <Save size={18} /> Save Changes
-                  </>
+                  <>{loading ? 'Saving...' : <><Save size={18} /> Save Changes</>}</>
                 ) : (
-                  <>
-                    <Edit2 size={18} /> Edit Profile
-                  </>
+                  <><Edit2 size={18} /> Edit Profile</>
                 )}
               </motion.button>
             </div>
@@ -52,7 +99,8 @@ export default function ProfilePage() {
                   <label className="block text-white font-medium text-sm">First Name</label>
                   <input
                     type="text"
-                    defaultValue={firstName || 'John'}
+                    value={form.first_name}
+                    onChange={e => setForm({ ...form, first_name: e.target.value })}
                     disabled={!isEditing}
                     className={`input-field ${!isEditing ? 'bg-[#0a0f1e] cursor-not-allowed' : ''}`}
                   />
@@ -61,7 +109,8 @@ export default function ProfilePage() {
                   <label className="block text-white font-medium text-sm">Last Name</label>
                   <input
                     type="text"
-                    defaultValue="Doe"
+                    value={form.last_name}
+                    onChange={e => setForm({ ...form, last_name: e.target.value })}
                     disabled={!isEditing}
                     className={`input-field ${!isEditing ? 'bg-[#0a0f1e] cursor-not-allowed' : ''}`}
                   />
@@ -74,7 +123,8 @@ export default function ProfilePage() {
                 </label>
                 <input
                   type="email"
-                  defaultValue="john@example.com"
+                  value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
                   disabled={!isEditing}
                   className={`input-field ${!isEditing ? 'bg-[#0a0f1e] cursor-not-allowed' : ''}`}
                 />
@@ -86,7 +136,8 @@ export default function ProfilePage() {
                 </label>
                 <input
                   type="tel"
-                  defaultValue="+91 98765 43210"
+                  value={form.phone}
+                  onChange={e => setForm({ ...form, phone: e.target.value })}
                   disabled={!isEditing}
                   className={`input-field ${!isEditing ? 'bg-[#0a0f1e] cursor-not-allowed' : ''}`}
                 />
@@ -97,7 +148,8 @@ export default function ProfilePage() {
                   <MapPin size={16} /> Address
                 </label>
                 <textarea
-                  defaultValue="123 Main Street, City, State 12345"
+                  value={form.address}
+                  onChange={e => setForm({ ...form, address: e.target.value })}
                   disabled={!isEditing}
                   className={`input-field resize-none ${!isEditing ? 'bg-[#0a0f1e] cursor-not-allowed' : ''}`}
                   rows={3}
