@@ -1,0 +1,65 @@
+@import 'tailwindcss';
+
+@layer base {
+  :root {
+    --primary: #0a0f1e;
+    --primary-light: #151d2e;
+    --accent: #00d4aa;
+    --accent-blue: #0ea5e9;
+    --foreground: #ffffff;
+    --muted: #a1a1a1;
+    --muted-dark: #333333;
+    --border: #2d2d2d;
+    --background: #0f0f0f;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+  }
+
+  * {
+    @apply box-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply m-0 bg-[var(--background)] text-[var(--foreground)] font-sans antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+}
+
+@layer components {
+  .container-max {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .glass {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+
+  .glass-dark {
+    @apply bg-black/30 backdrop-blur-md border border-white/10;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-[var(--accent)] to-[var(--accent-blue)] bg-clip-text text-transparent;
+  }
+
+  .btn-primary {
+    @apply px-6 py-3 bg-[var(--accent)] text-[var(--primary)] font-semibold rounded-lg hover:opacity-90 transition-all active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 bg-white/10 text-[var(--foreground)] border border-white/20 font-semibold rounded-lg hover:bg-white/20 transition-all active:scale-95;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 bg-[var(--primary-light)] border border-[var(--border)] rounded-lg text-[var(--foreground)] placeholder-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all;
+  }
+
+  .card {
+    @apply rounded-lg border border-[var(--border)] bg-[var(--primary-light)] p-6;
+  }
+}

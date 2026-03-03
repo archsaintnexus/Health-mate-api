@@ -1,5 +1,5 @@
 from app.db.repository.userRepo import UserRepository
-from app.db.schema.user import UserInCreate, UserInLogin, UserOutput, UserWithToken
+from app.db.schema.user import UserInCreate, UserInLogin, UserOutput, UserWithToken, UserInUpdate
 from app.core.security.authHandler import AuthHandler
 from app.core.security.hashHelper import HashHelper
 from sqlalchemy.orm import Session
@@ -32,7 +32,39 @@ class UserService:
     
     raise HTTPException(status_code=400, detail="Incorrect password. Please check your credentials.")
 
+  def get_user_by_id(self, user_id: int):
+    user = self.__userRepository.get_user_by_id(user_id=user_id)
+    if user:
+      return user
+
+    raise HTTPException(status_code=400, detail="User is not available")
 
 
+  def update_user(self, user_id: int, update_data: UserInUpdate) -> UserOutput:
+    if update_data.password:
+      update_data.password= HashHelper.get_password_hash(update_data.password) # This allows us to hash the password after updated
+
+    user = self.__userRepository.update_user(user_id=user_id, update_data=update_data)
+
+    if not user:
+      raise HTTPException(status_code=404, detail="User not found")
+    
+    return UserOutput(
+      id=user.id,
+      first_name=user.first_name,
+      last_name=user.last_name,
+      email=user.email
+    )
+  
+  def get_me(self, user_id: int) -> UserOutput:
+    user = self.__userRepository.get_user_by_id(user_id=user_id)
+    if not user:
+      raise HTTPException(status_code=404, detail="User not found")
+    return UserOutput(
+      id=user.id,
+      first_name=user.first_name,
+      last_name=user.last_name,
+      email=user.email
+    )
 
 
