@@ -5,6 +5,8 @@ from app.routers.auth import authRouter
 from app.util.protectRoute import get_current_user
 from app.db.schema.user import UserOutput
 from fastapi.middleware.cors import CORSMiddleware
+from app.routers.appointment import appointmentRouter
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -16,6 +18,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(router=authRouter, tags=["auth"], prefix="/auth") # Include the auth router with the prefix "/auth"
+app.include_router(appointmentRouter, prefix="/appointments", tags=["appointments"])
 
 app.add_middleware(
     CORSMiddleware,

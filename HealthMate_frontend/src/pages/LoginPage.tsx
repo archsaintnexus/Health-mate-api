@@ -19,26 +19,25 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginRequest>()
 
-  const onSubmit = async (data: LoginRequest) => {
-    setIsSubmitting(true)
-    try {
-      const response = await authApi.login(data)
-      setToken(response.token)
-      
-      // Extract and store first name from JWT or fetch it
-      // For now, we'll just store a placeholder
-      setFirstName('User')
-      
-      toast.success('Login successful!')
-      navigate('/dashboard')
-    } catch (error) {
-      toast.error('Invalid email or password')
-      console.error(error)
-    } finally {
-      setIsSubmitting(false)
-    }
+ const onSubmit = async (data: LoginRequest) => {
+  setIsSubmitting(true)
+  try {
+    const response = await authApi.login(data)
+    setToken(response.token)
+    
+    // Fetch real user data after login
+    const profile = await authApi.getProfile()
+    setFirstName(profile.first_name)
+    
+    toast.success('Login successful!')
+    navigate('/dashboard')
+  } catch (error) {
+    toast.error('Invalid email or password')
+    console.error(error)
+  } finally {
+    setIsSubmitting(false)
   }
-
+}
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {

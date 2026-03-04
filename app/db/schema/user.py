@@ -1,5 +1,5 @@
 from pydantic import EmailStr, BaseModel
-from typing import Union
+from typing import Union, Optional
 
 
 
@@ -17,6 +17,11 @@ class UserOutput(BaseModel):
   first_name: str
   last_name: str
   email: EmailStr
+  phone_number: Optional[str] = None # Optional because new users won't have it
+  address: Optional[str] = None
+
+  class Config:
+    from_attributes = True
 
 
 # What we expect from user when they want to update the properties of their account.
@@ -27,6 +32,10 @@ class UserInUpdate(BaseModel):
   last_name: Union[str, None] = None # This makes it optional for the user to update their last name.
   email: Union[EmailStr, None] = None
   password: Union[str, None] = None
+  phone_number: Union[str, None] = None
+  address: Union[str, None] = None
+
+
 
 
 # If the user wants to login.
@@ -38,6 +47,10 @@ class UserInLogin(BaseModel):
 # Token given to user with the output.
 class UserWithToken(BaseModel):
   token: str
+
+
+
+
 
 
 

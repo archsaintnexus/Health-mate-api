@@ -53,7 +53,9 @@ class UserService:
       id=user.id,
       first_name=user.first_name,
       last_name=user.last_name,
-      email=user.email
+      email=user.email,
+      address = user.address,
+      phone_number = user.phone_number,
     )
   
   def get_me(self, user_id: int) -> UserOutput:
@@ -64,7 +66,16 @@ class UserService:
       id=user.id,
       first_name=user.first_name,
       last_name=user.last_name,
-      email=user.email
+      email=user.email,
+      address = user.address,
+      phone_number = user.phone_number,
     )
+
+
+
+
+
+
+
 
 
