@@ -65,6 +65,14 @@ class CompanyUser(AbstractUser):
     phone_number = models.CharField(max_length=20, blank=True, default="")
     role = models.CharField(max_length=20, choices=UserRole.choices, default=UserRole.PATIENT)
     is_email_verified = models.BooleanField(default=False)
+    date_of_birth = models.DateField(null=True, blank=True)
+    gender = models.CharField(
+        max_length=10,
+        choices=[("male", "Male"), ("female", "Female"), ("other", "Other")],
+        null=True,
+        blank=True,
+    )
+    city = models.CharField(max_length=100, null=True, blank=True)
 
     groups = models.ManyToManyField(
         "auth.Group",
@@ -100,7 +108,6 @@ class CompanyUser(AbstractUser):
             return self.full_name
         full = f"{self.first_name} {self.last_name}".strip()
         return full or self.email
-
 
 class OTPCode(models.Model):
     user = models.ForeignKey(CompanyUser, on_delete=models.CASCADE, related_name="otp_codes")

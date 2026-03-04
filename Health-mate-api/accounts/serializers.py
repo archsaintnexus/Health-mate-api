@@ -29,7 +29,19 @@ class RegisterSerializer(serializers.Serializer, FirebaseTokenMixin):
     firebase_token = serializers.CharField(write_only=True)
     full_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
     phone_number = serializers.CharField(required=False, allow_blank=True, max_length=20)
-    role = serializers.ChoiceField(choices=UserRole.choices, required=False, default=UserRole.PATIENT)
+    date_of_birth = serializers.DateField(required=False, allow_null=True)
+    gender = serializers.ChoiceField(
+        choices=["male", "female", "other"],
+        required=False,
+        allow_null=True,
+        allow_blank=True
+    )
+    city = serializers.CharField(required=False, allow_blank=True, max_length=100)
+    role = serializers.ChoiceField(
+        choices=UserRole.choices,
+        required=False,
+        default=UserRole.PATIENT
+    )
 
     def validate(self, attrs):
         requested_role = attrs.get("role", UserRole.PATIENT)
@@ -38,7 +50,6 @@ class RegisterSerializer(serializers.Serializer, FirebaseTokenMixin):
 
         attrs["firebase_user"] = attrs.pop("firebase_token")
         return attrs
-
 
 class LoginSerializer(serializers.Serializer, FirebaseTokenMixin):
     firebase_token = serializers.CharField(write_only=True)
@@ -79,6 +90,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "firebase_uid",
             "full_name",
             "phone_number",
+            "date_of_birth",
+            "gender",
+            "city",
             "role",
             "is_email_verified",
             "created_at",

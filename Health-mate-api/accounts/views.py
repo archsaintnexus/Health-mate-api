@@ -46,7 +46,6 @@ def _build_otp_email(display_name: str, code: str, reason: str):
     </html>
     """
 
-
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
@@ -82,6 +81,9 @@ class RegisterView(APIView):
             firebase_uid=firebase_uid,
             full_name=serializer.validated_data.get("full_name", ""),
             phone_number=serializer.validated_data.get("phone_number", ""),
+            date_of_birth=serializer.validated_data.get("date_of_birth"),
+            gender=serializer.validated_data.get("gender"),
+            city=serializer.validated_data.get("city"),
             role=UserRole.PATIENT,
             is_active=True,
             is_email_verified=False,
@@ -95,7 +97,11 @@ class RegisterView(APIView):
 
         _send_email(
             subject="Welcome to Health Mate",
-            html_message=_build_otp_email(user.display_name, otp.code, "Verify your Health Mate account"),
+            html_message=_build_otp_email(
+                user.display_name,
+                otp.code,
+                "Verify your Health Mate account"
+            ),
             recipient=user.email,
         )
 
@@ -103,9 +109,19 @@ class RegisterView(APIView):
             True,
             "Registration successful. OTP sent to email.",
             201,
-            {"email": user.email, "verification_required": True},
+            {
+                "email": user.email,
+                "verification_required": True,
+                "user": {
+                    "full_name": user.full_name,
+                    "email": user.email,
+                    "gender": user.gender,
+                    "city": user.city,
+                    "date_of_birth": str(user.date_of_birth) if user.date_of_birth else None,
+                }
+            },
         )
-
+    
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
