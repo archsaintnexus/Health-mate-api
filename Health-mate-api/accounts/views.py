@@ -2,7 +2,7 @@ import os
 
 from django.db import transaction
 from drf_spectacular.utils import extend_schema, OpenApiResponse
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -10,9 +10,12 @@ from helper.response import CustomResponse
 from helper.tasks import send_a_mail
 
 from .firebase import update_user_password
-from .models import CompanyUser, OTPCode, OTPPurpose, UserRole
+from .models import CompanyUser, EmergencyContact, MedicalInformation, OTPCode, OTPPurpose, UserRole
 from .serializers import (
+    EmergencyContactSerializer,
     LoginSerializer,
+    MedicalInformationSerializer,
+    PersonalInformationSerializer,
     RegisterSerializer,
     ResetPasswordSerializer,
     UserProfileSerializer,
@@ -121,7 +124,7 @@ class RegisterView(APIView):
                 }
             },
         )
-    
+
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -306,4 +309,120 @@ class ResetPasswordView(APIView):
             "Password reset successful. You can now log in with your new password.",
             200,
         )
+
+
+# ── Profile Setup Views ──────────────────────────────────────────────────────
+
+class UserProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={
+            200: UserProfileSerializer,
+            404: OpenApiResponse(description="User not found"),
+        },
+        description="Get the complete profile of the currently authenticated user including medical info and emergency contact.",
+        tags=["Profile"],
+    )
+    def get(self, request):
+        user = request.user
+        serializer = UserProfileSerializer(user)
+        return CustomResponse(
+            True,
+            "Profile retrieved successfully.",
+            200,
+            serializer.data,
+        )
+
+
+class PersonalInformationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=PersonalInformationSerializer,
+        responses={
+            200: PersonalInformationSerializer,
+            400: OpenApiResponse(description="Validation error"),
+        },
+        description="Update personal information — Desktop 8 in Figma. Requires JWT authentication.",
+        tags=["Profile"],
+    )
+    def patch(self, request):
+        user = request.user
+        serializer = PersonalInformationSerializer(
+            user,
+            data=request.data,
+            partial=True
+        )
+        if not serializer.is_valid():
+            return CustomResponse(False, "Validation error", 400, serializer.errors)
+
+        serializer.save()
+
+        return CustomResponse(
+            True,
+            "Personal information updated successfully.",
+            200,
+            serializer.data,
+        )
+
+
+class MedicalInformationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=MedicalInformationSerializer,
+        responses={
+            200: MedicalInformationSerializer,
+            400: OpenApiResponse(description="Validation error"),
+        },
+        description="Create or update medical information — Desktop 9 in Figma. Requires JWT authentication.",
+        tags=["Profile"],
+    )
+    def post(self, request):
+        user = request.user
+
+        medical_info, created = MedicalInformation.objects.get_or_create(user=user)
+        serializer = MedicalInformationSerializer(
+            medical_info,
+            data=request.data,
+            partial=True
+        )
+        if not serializer.is_valid():
+            return CustomResponse(False, "Validation error", 400, serializer.errors)
+
+        serializer.save()
+
+        message = "Medical information saved successfully."
+        return CustomResponse(True, message, 200, serializer.data)
+
+
+class EmergencyContactView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=EmergencyContactSerializer,
+        responses={
+            200: EmergencyContactSerializer,
+            400: OpenApiResponse(description="Validation error"),
+        },
+        description="Create or update emergency contact — Desktop 10 in Figma. Requires JWT authentication.",
+        tags=["Profile"],
+    )
+    def post(self, request):
+        user = request.user
+
+        emergency_contact, created = EmergencyContact.objects.get_or_create(user=user)
+        serializer = EmergencyContactSerializer(
+            emergency_contact,
+            data=request.data,
+            partial=True
+        )
+        if not serializer.is_valid():
+            return CustomResponse(False, "Validation error", 400, serializer.errors)
+
+        serializer.save()
+
+        message = "Emergency contact saved successfully."
+        return CustomResponse(True, message, 200, serializer.data)
     
