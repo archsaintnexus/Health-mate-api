@@ -91,6 +91,7 @@ async def get_appointment(
     )
 
 
+# This is used to delete an appointment using it's id
 @appointmentRouter.delete("/{appointment_id}", response_model=AppointmentOutput)
 async def cancel_appointment(
     appointment_id: int,
@@ -101,3 +102,5 @@ async def cancel_appointment(
         appointment_id=appointment_id,
         user_id=current_user.id
     )
+
+

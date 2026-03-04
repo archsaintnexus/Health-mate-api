@@ -25,7 +25,7 @@ class User(Base):
 # The Provider model represents the Doctor or Healthcare professional
 class Provider(Base):
     __tablename__ = "providers"
-
+     
     id = Column(Integer, primary_key=True, index=True) # Id is always required
     full_name = Column(String(150), nullable=False)
     specialty = Column(String(150), nullable=False, index=True) # Their area of specialization
