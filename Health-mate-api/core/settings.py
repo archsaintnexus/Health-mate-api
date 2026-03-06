@@ -60,6 +60,8 @@ INSTALLED_APPS = [
 
     # local apps
     'accounts',
+    'homecare',
+    'pharmacy',
 ]
 
 # ── Middleware ────────────────────────────────────────────────────────────────
