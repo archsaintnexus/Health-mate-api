@@ -53,9 +53,11 @@ async def get_provider_slots(
     return AppointmentService(session=db).get_provider_slots(provider_id=provider_id)
 
 
-#  APPOINTMENT ENDPOINTS 
 
-@appointmentRouter.post("/", status_code=201, response_model=AppointmentOutput)
+
+
+#  APPOINTMENT ENDPOINTS 
+@appointmentRouter.post("/book", status_code=201, response_model=AppointmentOutput)
 async def book_appointment(
     data: AppointmentCreate,
     background_tasks: BackgroundTasks,
@@ -68,8 +70,7 @@ async def book_appointment(
         background_tasks=background_tasks
     )
 
-
-@appointmentRouter.get("/", response_model=List[AppointmentOutput])
+@appointmentRouter.get("/my", response_model=List[AppointmentOutput])
 async def get_my_appointments(
     db: Session = Depends(get_db),
     current_user: UserOutput = Depends(get_current_user)
@@ -78,8 +79,7 @@ async def get_my_appointments(
         user_id=current_user.id
     )
 
-
-@appointmentRouter.get("/{appointment_id}", response_model=AppointmentOutput)
+@appointmentRouter.get("/my/{appointment_id}", response_model=AppointmentOutput)
 async def get_appointment(
     appointment_id: int,
     db: Session = Depends(get_db),
@@ -90,9 +90,7 @@ async def get_appointment(
         user_id=current_user.id
     )
 
-
-# This is used to delete an appointment using it's id
-@appointmentRouter.delete("/{appointment_id}", response_model=AppointmentOutput)
+@appointmentRouter.delete("/my/{appointment_id}", response_model=AppointmentOutput)
 async def cancel_appointment(
     appointment_id: int,
     db: Session = Depends(get_db),
@@ -102,5 +100,3 @@ async def cancel_appointment(
         appointment_id=appointment_id,
         user_id=current_user.id
     )
-
-

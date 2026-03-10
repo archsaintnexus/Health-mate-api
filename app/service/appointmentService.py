@@ -77,8 +77,6 @@ class AppointmentService:
 
     def get_my_appointments(self, user_id: int):
         appointments = self.__appointmentRepo.get_user_appointments(user_id=user_id)
-        if not appointments:
-            raise HTTPException(status_code=404, detail="No appointments found")
         return appointments
 
     def get_appointment(self, appointment_id: int, user_id: int):

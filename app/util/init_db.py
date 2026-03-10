@@ -3,5 +3,7 @@ from app.db.models.models import User, Provider, Availability, Appointment
 
 def create_tables():
     Base.metadata.create_all(bind=engine)
+    print("✅ Tables Successfully Created")
     
-print("✅ Tables Successfully Created")
+if __name__ == "__main__":
+    create_tables()

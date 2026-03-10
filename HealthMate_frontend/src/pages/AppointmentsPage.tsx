@@ -158,6 +158,11 @@ export default function AppointmentsPage() {
     })
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  if (e.key === 'Enter') handleSearch()
+}
+
+
   return (
     <div className="min-h-screen bg-[#0a0f1e]">
       <Sidebar />
@@ -210,6 +215,7 @@ export default function AppointmentsPage() {
                   type="text"
                   value={specialty}
                   onChange={e => setSpecialty(e.target.value)}
+                  onKeyDown={handleKeyDown}
                   placeholder="e.g. Cardiology"
                   className="input-field"
                 />
@@ -220,6 +226,7 @@ export default function AppointmentsPage() {
                   type="text"
                   value={location}
                   onChange={e => setLocation(e.target.value)}
+                  onKeyDown={handleKeyDown}
                   placeholder="e.g. Lagos"
                   className="input-field"
                 />
