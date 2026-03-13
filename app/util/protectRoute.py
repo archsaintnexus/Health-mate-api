@@ -40,7 +40,7 @@ def get_current_user(
        )
      except Exception as error:
        raise error
-  
+
 
    raise auth_exception
 
