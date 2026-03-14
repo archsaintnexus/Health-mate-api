@@ -1,5 +1,5 @@
-from app.core.database import SessionLocal
-from app.db.models.models import Provider, Availability
+from core.database import SessionLocal
+from db.models.models import Provider, Availability
 from datetime import datetime, timedelta
 
 

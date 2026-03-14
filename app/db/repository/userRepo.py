@@ -1,6 +1,6 @@
 from .base import BaseRepository
-from app.db.models.models import User
-from app.db.schema.user import UserInCreate, UserInUpdate
+from db.models.models import User
+from db.schema.user import UserInCreate, UserInUpdate
 
 
 class UserRepository(BaseRepository): # To store user.

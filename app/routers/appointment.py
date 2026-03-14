@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
-from app.core.database import get_db
-from app.db.schema.appointment import (
+from core.database import get_db
+from db.schema.appointment import (
     ProviderOutput,
     SlotOutput,
     AppointmentCreate,
     AppointmentOutput
 )
-from app.service.appointmentService import AppointmentService
-from app.util.protectRoute import get_current_user
-from app.db.schema.user import UserOutput
+from service.appointmentService import AppointmentService
+from util.protectRoute import get_current_user
+from db.schema.user import UserOutput
 from typing import List, Optional
 import logging
 

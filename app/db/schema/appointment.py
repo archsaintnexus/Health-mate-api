@@ -1,8 +1,8 @@
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from app.db.schema.availability import SlotOutput
-from app.db.schema.provider import ProviderOutput
+from db.schema.availability import SlotOutput
+from db.schema.provider import ProviderOutput
 
 
 # This is used when the user 

@@ -1,11 +1,11 @@
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Annotated, Union
-from app.core.security.authHandler import AuthHandler
-from app.service.userService import UserService
-from app.core.database import get_db
-from app.db.schema.user import UserOutput
-from app.db.repository.userRepo import UserRepository
+from core.security.authHandler import AuthHandler
+from service.userService import UserService
+from core.database import get_db
+from db.schema.user import UserOutput
+from db.repository.userRepo import UserRepository
 # I CAN'T REMEMBER ALL THIS IMPORT LOL!
 
 

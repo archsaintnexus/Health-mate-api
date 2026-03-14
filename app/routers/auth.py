@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends
-from app.core.database import get_db
-from app.db.schema.user import UserInCreate, UserInLogin, UserInUpdate, UserWithToken, UserOutput
+from core.database import get_db
+from db.schema.user import UserInCreate, UserInLogin, UserInUpdate, UserWithToken, UserOutput
 from fastapi import HTTPException
-from app.service.userService import UserService
+from service.userService import UserService
 from sqlalchemy.orm import Session
 import logging
-from app.util.protectRoute import get_current_user
+from util.protectRoute import get_current_user
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

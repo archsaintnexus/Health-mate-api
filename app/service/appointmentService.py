@@ -1,11 +1,11 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, BackgroundTasks
-from app.db.repository.appointmentRepo import (
+from db.repository.appointmentRepo import (
     ProviderRepository,
     AvailabilityRepository,
     AppointmentRepository
 )
-from app.db.schema.appointment import AppointmentCreate
+from db.schema.appointment import AppointmentCreate
 
 
 class AppointmentService:

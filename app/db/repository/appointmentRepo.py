@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from .base import BaseRepository
-from app.db.models.models import Provider, Availability, Appointment
+from db.models.models import Provider, Availability, Appointment
 
 
 class ProviderRepository(BaseRepository):
