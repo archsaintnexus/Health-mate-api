@@ -1,9 +1,67 @@
-venv/
-.venv*
+# Environment
+.env
+.env.*
+
+# Firebase
+firebase-credentials.json
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
-
-.env*
-env/
+*.pyd
 venv/
+.venv/
+*.egg-info/
+
+# Django
+db.sqlite3
+*.log
+
+# Docker
+*.override.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Token scripts — contain secrets, never commit
+get_token.ps1
+refresh_token.txt# Environment
+.env
+.env.*
+
+# Firebase
+firebase-credentials.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+*.egg-info/
+
+# Django
+db.sqlite3
+*.log
+
+# Docker
+*.override.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Token scripts — contain secrets, never commit
+get_token.ps1
+refresh_token.txt
