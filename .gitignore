@@ -65,3 +65,4 @@ Thumbs.db
 # Token scripts — contain secrets, never commit
 get_token.ps1
 refresh_token.txt
+HealthMate_frontend/
