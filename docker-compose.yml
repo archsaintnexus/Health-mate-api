@@ -1,7 +1,5 @@
 version: '3.8'
-
 services:
-  # PostgreSQL Database
   db:
     image: postgres:15-alpine
     env_file: .env
@@ -18,8 +16,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # Redis Message Broker
   redis:
     image: redis:7-alpine
     ports:
@@ -32,11 +28,9 @@ services:
       timeout: 5s
       retries: 5
     command: redis-server --appendonly yes
-
-  # Django Web Service
   web:
     build: .
-    working_dir: /app/Health-mate-api
+    working_dir: /app
     command: >
       sh -c "python manage.py migrate &&
              python manage.py runserver 0.0.0.0:8000"
@@ -55,12 +49,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-
-  # Celery Worker
   celery:
     build: .
-    working_dir: /app/Health-mate-api
-    command: celery -A core worker --loglevel=info --concurrency=4
+    working_dir: /app
+    command: >
+      sh -c "python manage.py migrate &&
+             celery -A core worker --loglevel=info --concurrency=4"
     env_file: .env
     environment:
       DEBUG: "False"
@@ -68,18 +62,18 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-health_mate}
       RESEND_API_KEY: ${RESEND_API_KEY}
-      FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-/app/Health-mate-api/firebase-credentials.json}
+      FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-/app/firebase-credentials.json}
     volumes:
       - .:/app
     depends_on:
       - redis
       - web
-
-  # Celery Beat (Scheduled Tasks - Optional)
   celery-beat:
     build: .
-    working_dir: /app/Health-mate-api
-    command: celery -A core beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    working_dir: /app
+    command: >
+      sh -c "python manage.py migrate &&
+             celery -A core beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
     env_file: .env
     environment:
       DEBUG: "False"

@@ -1,24 +1,13 @@
 from pathlib import Path
 import os
 from datetime import timedelta
-import logging
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ── Secret Key ────────────────────────────────────────────────────────────────
-# The project requires SECRET_KEY for cryptographic signing.  In production
-# this must be provided via environment variable; during tests the value is
-# unimportant so we fall back to a known dummy to avoid needing to export the
-# variable repeatedly when invoking ``manage.py`` from the host shell.
 SECRET_KEY = os.getenv('SECRET_KEY')
 if not SECRET_KEY:
-    import sys
-
-    if 'test' in sys.argv:
-        SECRET_KEY = 'dummy'
-        logging.getLogger(__name__).warning("No SECRET_KEY set; using dummy for tests")
-    else:
-        raise ValueError("SECRET_KEY environment variable is required")
+    raise ValueError("SECRET_KEY environment variable is required")
 
 # ── Helper Functions ──────────────────────────────────────────────────────────
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -41,7 +30,6 @@ def _env_list(name: str, default: str = "") -> list[str]:
 DEBUG = _env_bool("DEBUG", False)
 ALLOWED_HOSTS = _env_list("ALLOWED_HOSTS", "localhost,127.0.0.1" if DEBUG else "")
 
-# ── Installed Apps ────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -50,15 +38,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # third-party
     'rest_framework',
     'rest_framework_simplejwt',
-    'rest_framework_simplejwt.token_blacklist',  # ← NEW: enables JWT blacklisting on logout
+    'rest_framework_simplejwt.token_blacklist',
     'drf_spectacular',
     'corsheaders',
-    'django_celery_beat',                        # ← already added, kept
+    'django_celery_beat',
 
-    # local apps
     'accounts',
     'homecare',
     'pharmacy',
@@ -94,25 +80,21 @@ TEMPLATES = [
         },
     },
 ]
+
+# ── Database ──────────────────────────────────────────────────────────────────
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.getenv('DB_NAME', 'health_mate'),
         'USER': os.getenv('DB_USER', 'postgres'),
         'PASSWORD': os.getenv('DB_PASSWORD', 'postgres'),
-        'HOST': os.getenv('DB_HOST', 'db'),       
+        'HOST': os.getenv('DB_HOST', 'db'),
         'PORT': os.getenv('DB_PORT', '5432'),
         'CONN_MAX_AGE': _env_int('DB_CONN_MAX_AGE', 60),
     }
 }
-import sys
-if 'test' in sys.argv:
-    host = DATABASES['default']['HOST']
-    if host == 'db':
-        DATABASES['default']['HOST'] = '127.0.0.1'
-        logging.getLogger(__name__).warning(
-            "Overriding DATABASES.default.HOST to 127.0.0.1 for tests"
-        )
+
+# ── Cache ─────────────────────────────────────────────────────────────────────
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -123,6 +105,8 @@ CACHES = {
         "KEY_PREFIX": "healthmate",
     }
 }
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
 AUTH_USER_MODEL = 'accounts.CompanyUser'
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -130,21 +114,28 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
+
+# ── Internationalization ──────────────────────────────────────────────────────
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
+
+# ── Static Files ──────────────────────────────────────────────────────────────
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ── REST Framework ────────────────────────────────────────────────────────────
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated', 
+        'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Health Mate API',
     'DESCRIPTION': 'Healthcare platform for appointments, telemedicine, and medical services',
@@ -156,8 +147,8 @@ SPECTACULAR_SETTINGS = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(seconds=_env_int("JWT_ACCESS_TOKEN_LIFETIME", 900)),
     'REFRESH_TOKEN_LIFETIME': timedelta(seconds=_env_int("JWT_REFRESH_TOKEN_LIFETIME", 604800)),
-    'ROTATE_REFRESH_TOKENS': True,          
-    'BLACKLIST_AFTER_ROTATION': True,      
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',),
@@ -196,7 +187,7 @@ CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
-CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True   
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # ── OTP Settings ──────────────────────────────────────────────────────────────
 OTP_EXPIRY_MINUTES = _env_int("OTP_EXPIRY_MINUTES", 10)
