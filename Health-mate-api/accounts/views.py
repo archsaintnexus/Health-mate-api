@@ -28,7 +28,7 @@ def _otp_expiry_seconds():
 
 
 def _send_email(subject: str, html_message: str, recipient: str):
-    send_a_mail.delay(
+    send_a_mail(
         title=subject,
         message=html_message,
         to=recipient,
