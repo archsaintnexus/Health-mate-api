@@ -11,8 +11,13 @@ class FirebaseTokenMixin:
             raise serializers.ValidationError("firebase_token must be a string.")
 
         try:
+            # This is where your actual Firebase token verification happens
             decoded = verify_id_token(token)
-        except Exception:
+        except Exception as e:
+            # Catching a broad Exception is okay here to provide a generic message,
+            # but for more specific errors, you might want to catch
+            # firebase_admin.auth.InvalidIdTokenError or similar.
+            # print(f"DEBUG: Firebase token verification error: {e}") # Temporarily uncomment for debugging
             raise serializers.ValidationError("Invalid or expired Firebase token.")
 
         uid = decoded.get("uid") or decoded.get("localId")
@@ -46,7 +51,19 @@ class RegisterSerializer(serializers.Serializer, FirebaseTokenMixin):
         requested_role = attrs.get("role", UserRole.PATIENT)
         if requested_role != UserRole.PATIENT:
             raise serializers.ValidationError({"role": "Public registration only allows patient role."})
-        attrs["firebase_user"] = attrs.pop("firebase_token")
+        
+        # Explicitly validate the firebase_token for registration
+        raw_firebase_token = attrs.get("firebase_token")
+        try:
+            decoded_firebase_user = self.validate_firebase_token(raw_firebase_token)
+        except serializers.ValidationError as e:
+            raise e
+        except Exception as e:
+            print(f"DEBUG: Unexpected error during Firebase token validation for registration: {e}")
+            raise serializers.ValidationError("An internal server error occurred during Firebase authentication for registration.")
+
+        attrs["firebase_user"] = decoded_firebase_user
+        attrs.pop("firebase_token", None) 
         return attrs
 
 
@@ -54,7 +71,23 @@ class LoginSerializer(serializers.Serializer, FirebaseTokenMixin):
     firebase_token = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        attrs["firebase_user"] = attrs.pop("firebase_token")
+        # Retrieve the raw Firebase token from the request data
+        raw_firebase_token = attrs.get("firebase_token")
+
+     
+        try:
+            decoded_firebase_user = self.validate_firebase_token(raw_firebase_token)
+        except serializers.ValidationError as e:
+            # Re-raise the ValidationError so DRF handles it and returns a 400 Bad Request
+            raise e
+        except Exception as e:
+      
+            print(f"DEBUG: Unexpected error during Firebase token validation for login: {e}")
+            raise serializers.ValidationError("An internal server error occurred during Firebase authentication.")
+
+        attrs["firebase_user"] = decoded_firebase_user
+        attrs.pop("firebase_token", None)
+
         return attrs
 
 
