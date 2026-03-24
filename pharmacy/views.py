@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from rest_framework.generics import CreateAPIView,ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.generics import CreateAPIView,ListCreateAPIView, RetrieveUpdateDestroyAPIView, ListAPIView
 from rest_framework import permissions
 
 
@@ -35,4 +35,10 @@ class DetailPharmacyProduct(RetrieveUpdateDestroyAPIView):
     serializer_class = PharmacyProductSerializer
     permission_classes = [permissions.IsAdminUser]
 
+
+# Pharmacy catalog
+class PharmacyCatalogView(ListAPIView):
+    queryset = PharmacyProduct.objects.filter(is_active=True)
+    serializer_class = PharmacyProductSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
