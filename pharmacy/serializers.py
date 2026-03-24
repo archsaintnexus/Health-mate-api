@@ -41,6 +41,7 @@ class PharmacyProductSerializer(serializers.ModelSerializer):
             "is_active",
         ]
     
+    @extend_schema_field(serializers.URLField)
     def get_image(self, obj):
         return obj.image.url if obj.image else None
 
