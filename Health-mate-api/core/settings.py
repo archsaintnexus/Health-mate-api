@@ -207,3 +207,42 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", not
 SECURE_HSTS_PRELOAD = _env_bool("SECURE_HSTS_PRELOAD", not DEBUG)
 SECURE_CONTENT_TYPE_NOSNIFF = _env_bool("SECURE_CONTENT_TYPE_NOSNIFF", True)
 X_FRAME_OPTIONS = os.getenv("X_FRAME_OPTIONS", "DENY")
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG', 
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple', 
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO', 
+            'propagate': False,
+        },
+        'accounts': {
+            'handlers': ['console'],
+            'level': 'DEBUG', 
+            'propagate': False,
+        },
+        '': { 
+            'handlers': ['console'],
+            'level': 'DEBUG', 
+        },
+    },
+}

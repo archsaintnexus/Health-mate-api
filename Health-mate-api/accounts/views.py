@@ -1,4 +1,5 @@
 import os
+import logging 
 
 from django.db import transaction
 from drf_spectacular.utils import extend_schema, OpenApiResponse
@@ -21,6 +22,8 @@ from .serializers import (
     UserProfileSerializer,
     VerifyOtpSerializer,
 )
+
+logger = logging.getLogger(__name__) # ADD THIS LINE - Logger for this module
 
 
 def _otp_expiry_seconds():
@@ -142,25 +145,43 @@ class LoginView(APIView):
         tags=["Authentication"],
     )
     def post(self, request):
+        # --- DEBUG LOGS START ---
+        logger.debug("LoginView.post: START")
+        logger.debug(f"LoginView.post: Request Headers: {request.headers}")
+        logger.debug(f"LoginView.post: Request Content-Type: {request.content_type}")
+        logger.debug(f"LoginView.post: Raw Request Body: {request.body}") # Raw bytes received
+        logger.debug(f"LoginView.post: Parsed Request Data (request.data): {request.data}") # What DRF parsed
+        # --- DEBUG LOGS END ---
+
         serializer = LoginSerializer(data=request.data)
         if not serializer.is_valid():
+            # --- DEBUG LOGS START ---
+            logger.error(f"LoginView.post: Serializer validation failed. Errors: {serializer.errors}")
+            # --- DEBUG LOGS END ---
             return CustomResponse(False, "Validation error", 400, serializer.errors)
 
+        # --- DEBUG LOGS START ---
+        logger.debug("LoginView.post: Serializer validation successful. Proceeding with login logic.")
+        # --- DEBUG LOGS END ---
         firebase_user = serializer.validated_data["firebase_user"]
         firebase_uid = firebase_user.get("uid") or firebase_user.get("localId")
         email = firebase_user.get("email")
 
         user = CompanyUser.objects.filter(email=email).first()
         if not user:
+            logger.warning(f"LoginView.post: No account found for email: {email}")
             return CustomResponse(False, "No account found. Please register first.", 404)
 
         if not user.firebase_uid:
+            logger.info(f"LoginView.post: User {email} missing firebase_uid. Setting from token.")
             user.firebase_uid = firebase_uid
             user.save(update_fields=["firebase_uid"])
         elif user.firebase_uid != firebase_uid:
+            logger.error(f"LoginView.post: Firebase account mismatch for email: {email}. User UID: {user.firebase_uid}, Token UID: {firebase_uid}")
             return CustomResponse(False, "Firebase account mismatch for this email.", 401)
 
         if not user.is_email_verified:
+            logger.warning(f"LoginView.post: Email not verified for user: {email}")
             return CustomResponse(False, "Email not verified. Please verify OTP first.", 403)
 
         refresh = RefreshToken.for_user(user)
@@ -170,6 +191,9 @@ class LoginView(APIView):
         access["role"] = user.role
         access["email"] = user.email
 
+        # --- DEBUG LOGS START ---
+        logger.debug(f"LoginView.post: Login successful for user: {email}. Returning tokens.")
+        # --- DEBUG LOGS END ---
         return CustomResponse(
             True,
             "Login successful.",
@@ -242,7 +266,6 @@ class ResetPasswordView(APIView):
             "Step 1: Send action='request' with email to receive OTP. "
             "Step 2: Send action='confirm' with email, otp_code and new_password to reset."
         ),
-        tags=["Authentication"],
     )
     @transaction.atomic
     def post(self, request):
@@ -273,156 +296,39 @@ class ResetPasswordView(APIView):
                 )
             return CustomResponse(
                 True,
-                "If an account with this email exists, a reset OTP has been sent.",
+                "If an account with that email exists, an OTP has been sent.",
                 200,
             )
+        elif action == "confirm":
+            otp_code = serializer.validated_data["otp_code"]
+            new_password = serializer.validated_data["new_password"]
 
-        if not user:
-            return CustomResponse(False, "Invalid email or OTP.", 400)
+            if not user:
+                return CustomResponse(False, "User not found.", 404)
 
-        otp_code = serializer.validated_data["otp_code"]
-        new_password = serializer.validated_data["new_password"]
+            otp = (
+                OTPCode.objects.filter(user=user, purpose=OTPPurpose.PASSWORD_RESET, is_used=False)
+                .order_by("-created_at")
+                .first()
+            )
+            if not otp:
+                return CustomResponse(False, "No active OTP found. Request a new one.", 400)
 
-        otp = (
-            OTPCode.objects.filter(user=user, purpose=OTPPurpose.PASSWORD_RESET, is_used=False)
-            .order_by("-created_at")
-            .first()
-        )
-        if not otp:
-            return CustomResponse(False, "No active reset OTP found.", 400)
+            is_valid, message = otp.verify(otp_code)
+            if not is_valid:
+                return CustomResponse(False, message, 400)
 
-        is_valid, message = otp.verify(otp_code)
-        if not is_valid:
-            return CustomResponse(False, message, 400)
+            # Update password in Firebase
+            if user.firebase_uid:
+                try:
+                    update_user_password(user.firebase_uid, new_password)
+                except Exception as e:
+                    logger.error(f"Failed to update password in Firebase for user {user.email}: {e}")
+                    return CustomResponse(
+                        False, "Failed to update password in Firebase.", 502
+                    )
 
-        if user.firebase_uid:
-            try:
-                update_user_password(user.firebase_uid, new_password)
-            except ValueError:
-                return CustomResponse(False, "Unable to reset password at this time.", 502)
+            user.set_password(new_password)
+            user.save(update_fields=["password"])
 
-        user.set_password(new_password)
-        user.save(update_fields=["password"])
-
-        return CustomResponse(
-            True,
-            "Password reset successful. You can now log in with your new password.",
-            200,
-        )
-
-
-# ── Profile Setup Views ──────────────────────────────────────────────────────
-
-class UserProfileView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(
-        responses={
-            200: UserProfileSerializer,
-            404: OpenApiResponse(description="User not found"),
-        },
-        description="Get the complete profile of the currently authenticated user including medical info and emergency contact.",
-        tags=["Profile"],
-    )
-    def get(self, request):
-        user = request.user
-        serializer = UserProfileSerializer(user)
-        return CustomResponse(
-            True,
-            "Profile retrieved successfully.",
-            200,
-            serializer.data,
-        )
-
-
-class PersonalInformationView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(
-        request=PersonalInformationSerializer,
-        responses={
-            200: PersonalInformationSerializer,
-            400: OpenApiResponse(description="Validation error"),
-        },
-        description="Update personal information — Desktop 8 in Figma. Requires JWT authentication.",
-        tags=["Profile"],
-    )
-    def patch(self, request):
-        user = request.user
-        serializer = PersonalInformationSerializer(
-            user,
-            data=request.data,
-            partial=True
-        )
-        if not serializer.is_valid():
-            return CustomResponse(False, "Validation error", 400, serializer.errors)
-
-        serializer.save()
-
-        return CustomResponse(
-            True,
-            "Personal information updated successfully.",
-            200,
-            serializer.data,
-        )
-
-
-class MedicalInformationView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(
-        request=MedicalInformationSerializer,
-        responses={
-            200: MedicalInformationSerializer,
-            400: OpenApiResponse(description="Validation error"),
-        },
-        description="Create or update medical information — Desktop 9 in Figma. Requires JWT authentication.",
-        tags=["Profile"],
-    )
-    def post(self, request):
-        user = request.user
-
-        medical_info, created = MedicalInformation.objects.get_or_create(user=user)
-        serializer = MedicalInformationSerializer(
-            medical_info,
-            data=request.data,
-            partial=True
-        )
-        if not serializer.is_valid():
-            return CustomResponse(False, "Validation error", 400, serializer.errors)
-
-        serializer.save()
-
-        message = "Medical information saved successfully."
-        return CustomResponse(True, message, 200, serializer.data)
-
-
-class EmergencyContactView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(
-        request=EmergencyContactSerializer,
-        responses={
-            200: EmergencyContactSerializer,
-            400: OpenApiResponse(description="Validation error"),
-        },
-        description="Create or update emergency contact — Desktop 10 in Figma. Requires JWT authentication.",
-        tags=["Profile"],
-    )
-    def post(self, request):
-        user = request.user
-
-        emergency_contact, created = EmergencyContact.objects.get_or_create(user=user)
-        serializer = EmergencyContactSerializer(
-            emergency_contact,
-            data=request.data,
-            partial=True
-        )
-        if not serializer.is_valid():
-            return CustomResponse(False, "Validation error", 400, serializer.errors)
-
-        serializer.save()
-
-        message = "Emergency contact saved successfully."
-        return CustomResponse(True, message, 200, serializer.data)
-    
+            return CustomResponse(True, "Password reset successfully.", 200)

@@ -1,3 +1,6 @@
+import logging # ADD THIS LINE
+import os
+
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
@@ -5,24 +8,40 @@ from .firebase import verify_id_token
 from .models import CompanyUser, EmergencyContact, MedicalInformation, OTPPurpose, UserRole
 
 
+logger = logging.getLogger(__name__) 
+
+
 class FirebaseTokenMixin:
     def validate_firebase_token(self, token):
+        # --- DEBUG LOGS START ---
+        logger.debug(f"FirebaseTokenMixin.validate_firebase_token: START")
+        logger.debug(f"FirebaseTokenMixin.validate_firebase_token: Received token: '{token}'")
+        logger.debug(f"FirebaseTokenMixin.validate_firebase_token: Type of received token: {type(token)}")
+        # --- DEBUG LOGS END ---
+
         if not isinstance(token, str):
+            # --- DEBUG LOGS START ---
+            logger.error(f"FirebaseTokenMixin.validate_firebase_token: FAILED - Token is not a string!")
+            logger.error(f"FirebaseTokenMixin.validate_firebase_token: Actual type: {type(token)}, Actual value: '{token}'")
+            # --- DEBUG LOGS END ---
             raise serializers.ValidationError("firebase_token must be a string.")
 
         try:
-            
             decoded = verify_id_token(token)
+            logger.debug(f"FirebaseTokenMixin.validate_firebase_token: Token successfully decoded by Firebase.")
         except Exception as e:
-  
+            logger.error(f"FirebaseTokenMixin.validate_firebase_token: Error during Firebase token verification: {e}")
             raise serializers.ValidationError("Invalid or expired Firebase token.")
 
         uid = decoded.get("uid") or decoded.get("localId")
         email = decoded.get("email")
         if not uid or not email:
+            logger.error(f"FirebaseTokenMixin.validate_firebase_token: Decoded token missing UID or Email claims. UID: {uid}, Email: {email}")
             raise serializers.ValidationError(
                 "Firebase token must contain uid and email claims."
             )
+        logger.debug(f"FirebaseTokenMixin.validate_firebase_token: Token valid and contains UID/Email. Decoded UID: {uid}, Email: {email}")
+        logger.debug(f"FirebaseTokenMixin.validate_firebase_token: END - Returning decoded user.")
         return decoded
 
 
@@ -45,22 +64,26 @@ class RegisterSerializer(serializers.Serializer, FirebaseTokenMixin):
     )
 
     def validate(self, attrs):
+        logger.debug(f"RegisterSerializer.validate: START - attrs: {attrs}")
         requested_role = attrs.get("role", UserRole.PATIENT)
         if requested_role != UserRole.PATIENT:
             raise serializers.ValidationError({"role": "Public registration only allows patient role."})
         
-        # Explicitly validate the firebase_token for registration
         raw_firebase_token = attrs.get("firebase_token")
+        logger.debug(f"RegisterSerializer.validate: Extracted firebase_token: '{raw_firebase_token}', Type: {type(raw_firebase_token)}")
+
         try:
             decoded_firebase_user = self.validate_firebase_token(raw_firebase_token)
         except serializers.ValidationError as e:
+            logger.error(f"RegisterSerializer.validate: Caught ValidationError from firebase_token validation: {e.detail}")
             raise e
         except Exception as e:
-            print(f"DEBUG: Unexpected error during Firebase token validation for registration: {e}")
+            logger.exception("RegisterSerializer.validate: Unexpected error during Firebase token validation for registration.") # Uses logger.exception for traceback
             raise serializers.ValidationError("An internal server error occurred during Firebase authentication for registration.")
 
         attrs["firebase_user"] = decoded_firebase_user
         attrs.pop("firebase_token", None) 
+        logger.debug(f"RegisterSerializer.validate: END - Validation successful.")
         return attrs
 
 
@@ -68,23 +91,35 @@ class LoginSerializer(serializers.Serializer, FirebaseTokenMixin):
     firebase_token = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        # Retrieve the raw Firebase token from the request data
+        # --- DEBUG LOGS START ---
+        logger.debug(f"LoginSerializer.validate: START - attrs received: {attrs}")
+
         raw_firebase_token = attrs.get("firebase_token")
 
+        # --- DEBUG LOGS START ---
+        logger.debug(f"LoginSerializer.validate: Extracted raw_firebase_token: '{raw_firebase_token}'")
+        logger.debug(f"LoginSerializer.validate: Type of raw_firebase_token: {type(raw_firebase_token)}")
+        # --- DEBUG LOGS END ---
      
         try:
             decoded_firebase_user = self.validate_firebase_token(raw_firebase_token)
         except serializers.ValidationError as e:
-           
+            # --- DEBUG LOGS START ---
+            logger.error(f"LoginSerializer.validate: Caught ValidationError from firebase_token validation: {e.detail}")
+            # --- DEBUG LOGS END ---
             raise e
         except Exception as e:
-      
-            print(f"DEBUG: Unexpected error during Firebase token validation for login: {e}")
+            # --- DEBUG LOGS START ---
+            logger.exception("LoginSerializer.validate: Unexpected error during Firebase token validation for login.") # Uses logger.exception for traceback
+            # --- DEBUG LOGS END ---
             raise serializers.ValidationError("An internal server error occurred during Firebase authentication.")
 
         attrs["firebase_user"] = decoded_firebase_user
         attrs.pop("firebase_token", None)
 
+        # --- DEBUG LOGS START ---
+        logger.debug(f"LoginSerializer.validate: END - Validation successful. Final attrs: {attrs}")
+        # --- DEBUG LOGS END ---
         return attrs
 
 
