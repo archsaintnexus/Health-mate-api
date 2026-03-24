@@ -11,7 +11,7 @@ class FirebaseTokenMixin:
             raise serializers.ValidationError("firebase_token must be a string.")
 
         try:
-            # This is where your actual Firebase token verification happens
+            
             decoded = verify_id_token(token)
         except Exception as e:
   
@@ -75,7 +75,7 @@ class LoginSerializer(serializers.Serializer, FirebaseTokenMixin):
         try:
             decoded_firebase_user = self.validate_firebase_token(raw_firebase_token)
         except serializers.ValidationError as e:
-            # Re-raise the ValidationError so DRF handles it and returns a 400 Bad Request
+           
             raise e
         except Exception as e:
       
