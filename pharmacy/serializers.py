@@ -1,5 +1,6 @@
 from django.db import transaction
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 
 from .models import (
     PharmacyCategory,
@@ -17,6 +18,7 @@ class PharmacyCategorySerializer(serializers.ModelSerializer):
         model = PharmacyCategory
         fields = ["id", "name", "slug", "image"]
 
+    @extend_schema_field(serializers.URLField)
     def get_image(self, obj):
         return obj.image.url if obj.image else None
 
