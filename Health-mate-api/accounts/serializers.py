@@ -14,10 +14,7 @@ class FirebaseTokenMixin:
             # This is where your actual Firebase token verification happens
             decoded = verify_id_token(token)
         except Exception as e:
-            # Catching a broad Exception is okay here to provide a generic message,
-            # but for more specific errors, you might want to catch
-            # firebase_admin.auth.InvalidIdTokenError or similar.
-            # print(f"DEBUG: Firebase token verification error: {e}") # Temporarily uncomment for debugging
+  
             raise serializers.ValidationError("Invalid or expired Firebase token.")
 
         uid = decoded.get("uid") or decoded.get("localId")
