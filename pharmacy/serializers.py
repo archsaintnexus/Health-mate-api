@@ -12,7 +12,7 @@ from .models import (
 
 
 class PharmacyCategorySerializer(serializers.ModelSerializer):
-    image = serializers.SerializerMethodField()
+    image = serializers.ImageField(write_only = True, required=False)
 
     class Meta:
         model = PharmacyCategory
@@ -24,7 +24,18 @@ class PharmacyCategorySerializer(serializers.ModelSerializer):
 
 
 class PharmacyProductSerializer(serializers.ModelSerializer):
-    image = serializers.SerializerMethodField()
+    
+    # Allow uploads for image
+    image = serializers.ImageField(write_only=True, required=False)
+    
+    # Accept category ID when creating
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=PharmacyCategory.objects.all(),
+        source="category",
+        write_only=True
+    )
+
+
     category = PharmacyCategorySerializer(read_only=True)
 
     class Meta:
@@ -32,6 +43,7 @@ class PharmacyProductSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "category",
+            "category_id",
             "name",
             "image",
             "description",
