@@ -21,6 +21,8 @@ A secure, production-ready authentication and user profile management service bu
 - [Running Tests](#running-tests)
 - [Docker Services](#docker-services)
 - [Security Notes](#security-notes)
+- [Additional Modules (Appointments/Consultation/Medicals/Pharmacy/Homecare)](#additional-modules-appointmentsconsultationmedicalspharmacyhomecare)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -55,13 +57,14 @@ Health Mate Authentication Service handles all user identity and access manageme
 | django-celery-beat | 2.8.1 | Scheduled tasks |
 | drf-spectacular | 0.28.0 | API documentation |
 | Resend | — | Email delivery |
+| Cloudinary | 1.44.1 | Media storage for pharmacy images |
 | Docker | — | Containerisation |
 
 ---
 
 ## Project Structure
 
-```
+```text
 Health-mate-api/
 ├── core/                        # Django config
 │   ├── settings.py
@@ -74,8 +77,13 @@ Health-mate-api/
 │   ├── serializers.py           # Request/response serializers
 │   ├── firebase.py              # Firebase Admin SDK helpers
 │   └── urls.py                  # Auth URL routes
+├── appointments/                # Appointment booking & schedules
+├── consultation/                # Consultation flow + doctor profile
+├── medicals/                    # Medical records, prescriptions, labs
+├── pharmacy/                    # Pharmacy products & orders
+├── homecare/                    # Homecare services & requests
 ├── helper/
-│   ├── tasks.py                 # send_a_mail Celery task
+│   ├── tasks.py                 # send_a_mail + periodic tasks
 │   └── response.py              # CustomResponse helper
 ├── firebase-credentials.json    # Firebase service account (DO NOT COMMIT)
 ├── manage.py
@@ -88,9 +96,9 @@ Health-mate-api/
 
 ### Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- [Firebase Project](https://console.firebase.google.com/)
-- [Resend Account](https://resend.com/) (for email delivery)
+- Docker Desktop
+- Firebase Project
+- Resend Account (for email delivery)
 
 ### 1. Clone the Repository
 
@@ -109,7 +117,8 @@ cp .env.example .env
 ### 3. Add Firebase Credentials
 
 Download your Firebase service account key:
-```
+
+```text
 Firebase Console → Project Settings → Service Accounts
 → Generate new private key → Download JSON
 → Rename to: firebase-credentials.json
@@ -166,7 +175,7 @@ CELERY_BROKER_URL=redis://redis:6379/0
 CELERY_RESULT_BACKEND=redis://redis:6379/0
 
 # Firebase
-FIREBASE_CREDENTIALS_PATH=/app/Health-mate-api/firebase-credentials.json
+FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
 FIREBASE_API_KEY=your-firebase-api-key
 FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
 FIREBASE_PROJECT_ID=your-project-id
@@ -208,6 +217,7 @@ Base URL: `http://localhost:8000`
 Register a new user. Requires a valid Firebase ID token.
 
 **Request Body:**
+
 ```json
 {
   "firebase_token": "eyJhbGciOiJSUzI1NiIs...",
@@ -218,6 +228,7 @@ Register a new user. Requires a valid Firebase ID token.
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -230,6 +241,7 @@ Register a new user. Requires a valid Firebase ID token.
 ```
 
 **Error Responses:**
+
 | Code | Reason |
 |---|---|
 | 400 | Validation error / Invalid Firebase token |
@@ -242,6 +254,7 @@ Register a new user. Requires a valid Firebase ID token.
 Login using a Firebase ID token. Returns JWT tokens.
 
 **Request Body:**
+
 ```json
 {
   "firebase_token": "eyJhbGciOiJSUzI1NiIs..."
@@ -249,6 +262,7 @@ Login using a Firebase ID token. Returns JWT tokens.
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -270,6 +284,7 @@ Login using a Firebase ID token. Returns JWT tokens.
 ```
 
 **Error Responses:**
+
 | Code | Reason |
 |---|---|
 | 400 | Validation error |
@@ -284,6 +299,7 @@ Login using a Firebase ID token. Returns JWT tokens.
 Verify OTP for email verification after registration.
 
 **Request Body:**
+
 ```json
 {
   "email": "john@example.com",
@@ -293,12 +309,14 @@ Verify OTP for email verification after registration.
 ```
 
 **Purpose Options:**
+
 | Value | Use Case |
 |---|---|
 | `signup` | Email verification after registration |
 | `password_reset` | Password reset verification |
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -313,6 +331,7 @@ Verify OTP for email verification after registration.
 Two-step password reset.
 
 **Step 1 — Request OTP:**
+
 ```json
 {
   "action": "request",
@@ -321,6 +340,7 @@ Two-step password reset.
 ```
 
 **Step 2 — Confirm Reset:**
+
 ```json
 {
   "action": "confirm",
@@ -331,6 +351,7 @@ Two-step password reset.
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -342,7 +363,7 @@ Two-step password reset.
 
 ## Authentication Flow
 
-```
+```text
 CLIENT                          BACKEND                        FIREBASE
   │                               │                               │
   │── Sign in with Firebase ──────────────────────────────────── │
@@ -380,7 +401,7 @@ CLIENT                          BACKEND                        FIREBASE
 
 ## Password Reset Flow
 
-```
+```text
 1. POST /auth/reset-password/  { action: "request", email }
    → OTP sent to email (even if email doesn't exist, returns 200 to prevent enumeration)
 
@@ -403,7 +424,8 @@ CLIENT                          BACKEND                        FIREBASE
 ### Using the Access Token
 
 Include in every authenticated request:
-```
+
+```text
 Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 ```
 
@@ -420,8 +442,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 
 ### Token Rotation
 
-- Refresh tokens **rotate** on every use
-- Old refresh tokens are **blacklisted** automatically
+- Refresh tokens rotate on every use
+- Old refresh tokens are blacklisted automatically
 - All tokens are invalidated on password reset
 
 ---
@@ -525,6 +547,53 @@ docker-compose exec web python manage.py shell
 
 ---
 
+## Additional Modules (Appointments/Consultation/Medicals/Pharmacy/Homecare)
+
+In addition to authentication, this backend currently includes:
+
+- **Appointments** endpoints under `/appointments/`
+- **Consultation** endpoints under `/consultations/`
+- **Medicals** endpoints under `/medicals/`
+- **Pharmacy** endpoints under `/api/pharmacy/`
+- **Homecare** endpoints under `/api/homecare/`
+
+Swagger docs: `http://localhost:8000/api/docs/`
+
+---
+
+## Troubleshooting
+
+### Cloudinary module error
+
+If you see:
+
+```text
+ModuleNotFoundError: No module named 'cloudinary'
+```
+
+Make sure:
+
+- `cloudinary==1.44.1` exists in `requirements.txt`
+- `'cloudinary'` is in `INSTALLED_APPS`
+
+Then rebuild:
+
+```bash
+docker-compose down
+docker-compose up --build
+```
+
+### Pharmacy / Homecare not visible on localhost
+
+Use these base routes:
+
+- `http://localhost:8000/api/pharmacy/`
+- `http://localhost:8000/api/homecare/`
+
+They are not mounted at `/pharmacy/` or `/homecare/`.
+
+---
+
 ## .gitignore Essentials
 
 ```gitignore
@@ -536,9 +605,3 @@ __pycache__/
 venv/
 db.sqlite3
 ```
-
----
-
-## License
-
-This project is part of the Health Mate platform. All rights reserved.
