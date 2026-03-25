@@ -7,6 +7,7 @@ from .views import (
     PharmacyCatalogView,
     PharmacyOrderCreateView,
     PharmacyOrderListView,
+    PharmacyOrderStatusView
 )
 
 app_name = "pharmacy"
@@ -35,4 +36,5 @@ urlpatterns = [
     path("catalog/", PharmacyCatalogView.as_view(), name="pharmacy-catalog"),
     path("orders/", PharmacyOrderCreateView.as_view(), name="pharmacy-order-create"),
     path("orders/list/", PharmacyOrderListView.as_view(), name="pharmacy-order-list"),
+    path("orders/<int:pk>/status/", PharmacyOrderStatusView.as_view(), name="pharmacy-order-status"),
 ]

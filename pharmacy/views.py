@@ -18,6 +18,8 @@ from .serializers import (
     PharmacyOrderStatusSerializer
 )
 
+from .permissions import IsOwnerOrAdmin
+
 # Create your views here.
 
 
@@ -84,3 +86,14 @@ class PharmacyOrderListView(ListAPIView):
         if self.request.user.is_staff:
             return PharmacyOrder.objects.prefetch_related("items__product").all()
         return PharmacyOrder.objects.prefetch_related("items__product").filter(user=self.request.user)
+
+
+# Order status tracking
+class PharmacyOrderStatusView(RetrieveAPIView):
+    serializer_class = PharmacyOrderStatusSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return PharmacyOrder.objects.all()
+        return PharmacyOrder.objects.filter(user=self.request.user)
