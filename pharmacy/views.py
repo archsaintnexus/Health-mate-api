@@ -1,30 +1,42 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from rest_framework.generics import (
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
     ListAPIView, RetrieveAPIView
 )
 from rest_framework.views import APIView
-from rest_framework import permissions, status
+from rest_framework import permissions, status, generics, viewsets
 from rest_framework.response import Response
+from rest_framework.decorators import action
 
 
-from .models import PharmacyCategory, PharmacyProduct, PharmacyOrder
+from .models import ( Cart,
+    CartItem,
+    OrderTrackingEvent,
+    PharmacyCategory,
+    PharmacyNotification,
+    PharmacyOrder,
+    PharmacyProduct)
+
 from .serializers import (
+    AddToCartSerializer,
+    CartSerializer,
+    CheckoutSerializer,
     PharmacyCategorySerializer,
+    PharmacyNotificationSerializer,
+    PharmacyOrderSerializer,
     PharmacyProductSerializer,
-    PharmacyOrderCreateSerializer,
-    PharmacyOrderReadSerializer,
-    PharmacyOrderStatusSerializer
+    UpdateCartItemSerializer,
+    UpdateOrderStatusSerializer,
 )
 
-from .permissions import IsOwnerOrAdmin
+from .permissions import IsOwnerOrAdmin, IsAdminUserOnly
 
 # Create your views here.
 
 
 ## Create CRUD for catagories
-class CreateListPharmacyCategory(ListCreateAPIView):
+class PharmacyCategoryCreateListView(ListCreateAPIView):
     queryset = PharmacyCategory.objects.all()
     serializer_class = PharmacyCategorySerializer
 
@@ -34,20 +46,20 @@ class CreateListPharmacyCategory(ListCreateAPIView):
         return []
 
 
-class DetailPharmacyCategory(RetrieveUpdateDestroyAPIView):
+class PharmacyCategoryDetailView(RetrieveUpdateDestroyAPIView):
     queryset = PharmacyCategory.objects.all()
     serializer_class = PharmacyCategorySerializer
     permission_classes = [permissions.IsAdminUser]
 
 
 ## Create CRUD for  products
-class CreateListPharmacyProduct(ListCreateAPIView):
+class PharmacyProductListCreateView(ListCreateAPIView):
     queryset = PharmacyProduct.objects.all()
     serializer_class = PharmacyProductSerializer
     permission_classes = [permissions.IsAdminUser]
 
 
-class DetailPharmacyProduct(RetrieveUpdateDestroyAPIView):
+class PharmacyProductDetailView(RetrieveUpdateDestroyAPIView):
     queryset = PharmacyProduct.objects.all()
     serializer_class = PharmacyProductSerializer
     permission_classes = [permissions.IsAdminUser]
@@ -61,39 +73,102 @@ class PharmacyCatalogView(ListAPIView):
 
 
 # Order creation
-class PharmacyOrderCreateView(APIView):
+class CartView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = PharmacyOrderCreateSerializer
 
-    def post(self, request, *args, **kwargs):
-        serializer = PharmacyOrderCreateSerializer(
-            data=request.data, context={"request": request}
-        )
+    def get(self, request):
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+        return Response(CartSerializer(cart).data)
+
+
+class AddToCartView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = AddToCartSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        cart = serializer.save()
+        return Response(CartSerializer(cart).data, status=status.HTTP_200_OK)
+
+
+class CartItemUpdateDeleteView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, pk):
+        cart_item = get_object_or_404(CartItem, pk=pk, cart__user=request.user)
+        serializer = UpdateCartItemSerializer(cart_item, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(CartSerializer(cart_item.cart).data)
+
+    def delete(self, request, pk):
+        cart_item = get_object_or_404(CartItem, pk=pk, cart__user=request.user)
+        cart = cart_item.cart
+        cart_item.delete()
+        return Response(CartSerializer(cart).data, status=status.HTTP_200_OK)
+
+
+class CheckoutView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = CheckoutSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         order = serializer.save()
-        return Response(
-            PharmacyOrderReadSerializer(order).data, status=status.HTTP_201_CREATED
-        )
+        return Response(PharmacyOrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
 
 
-# Order list tracking
-class PharmacyOrderListView(ListAPIView):
-    serializer_class = PharmacyOrderReadSerializer
+
+# Order  tracking
+class MyOrderListView(generics.ListAPIView):
+    serializer_class = PharmacyOrderSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        if self.request.user.is_staff:
-            return PharmacyOrder.objects.prefetch_related("items__product").all()
-        return PharmacyOrder.objects.prefetch_related("items__product").filter(user=self.request.user)
+        return PharmacyOrder.objects.prefetch_related("items__product", "tracking_events").filter(
+            user=self.request.user
+        )
 
 
-# Order status tracking
-class PharmacyOrderStatusView(RetrieveAPIView):
-    serializer_class = PharmacyOrderStatusSerializer
+class MyOrderDetailView(generics.RetrieveAPIView):
+    serializer_class = PharmacyOrderSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
 
     def get_queryset(self):
         if self.request.user.is_staff:
-            return PharmacyOrder.objects.all()
-        return PharmacyOrder.objects.filter(user=self.request.user)
+            return PharmacyOrder.objects.prefetch_related("items__product", "tracking_events").all()
+        return PharmacyOrder.objects.prefetch_related("items__product", "tracking_events").filter(
+            user=self.request.user
+        )
+
+
+class OrderTrackingView(generics.RetrieveAPIView):
+    serializer_class = PharmacyOrderSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return PharmacyOrder.objects.prefetch_related("tracking_events", "items__product").all()
+        return PharmacyOrder.objects.prefetch_related("tracking_events", "items__product").filter(
+            user=self.request.user
+        )
+
+
+
+class AdminOrderViewSet(viewsets.ModelViewSet):
+    queryset = PharmacyOrder.objects.prefetch_related("items__product", "tracking_events").all()
+    permission_classes = [permissions.IsAuthenticated, IsAdminUserOnly]
+
+    def get_serializer_class(self):
+        if self.action in ["partial_update", "update"]:
+            return UpdateOrderStatusSerializer
+        return PharmacyOrderSerializer
+
+    @action(detail=True, methods=["patch"], url_path="update-status")
+    def update_status(self, request, pk=None):
+        order = self.get_object()
+        serializer = UpdateOrderStatusSerializer(order, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(PharmacyOrderSerializer(order).data)
