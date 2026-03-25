@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (CreateListPharmacyCategory, DetailPharmacyCategory,
-                    CreateListPharmacyProduct, DetailPharmacyProduct, PharmacyCatalogView)
+                    CreateListPharmacyProduct, DetailPharmacyProduct, PharmacyCatalogView, PharmacyOrderCreateView)
 
 app_name = 'pharmacy'
 
@@ -12,4 +12,5 @@ urlpatterns =[
     path("products/<int:pk>/", view=DetailPharmacyProduct.as_view(), name="detail_pharmacy_product"),
 
     path("catalog/", PharmacyCatalogView.as_view(), name="pharmacy-catalog"),
+    path("orders/", PharmacyOrderCreateView.as_view(), name="pharmacy-order-create"),
 ]
