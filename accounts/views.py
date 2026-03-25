@@ -17,6 +17,7 @@ from .serializers import (
     MedicalInformationSerializer,
     PersonalInformationSerializer,
     RegisterSerializer,
+    ResendOtpSerializer,
     ResetPasswordSerializer,
     UserProfileSerializer,
     VerifyOtpSerializer,
@@ -227,6 +228,59 @@ class VerifyOtpView(APIView):
         return CustomResponse(True, message, 200)
 
 
+class ResendOtpView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        request=ResendOtpSerializer,
+        responses={
+            200: OpenApiResponse(description="OTP sent successfully."),
+            400: OpenApiResponse(description="Validation error or request not allowed"),
+            404: OpenApiResponse(description="User not found"),
+        },
+        description="Resend OTP for signup email verification or password reset.",
+        tags=["Authentication"],
+    )
+    def post(self, request):
+        serializer = ResendOtpSerializer(data=request.data)
+        if not serializer.is_valid():
+            return CustomResponse(False, "Validation error", 400, serializer.errors)
+
+        email = serializer.validated_data["email"]
+        purpose = serializer.validated_data["purpose"]
+
+        user = CompanyUser.objects.filter(email=email).first()
+        if not user:
+            return CustomResponse(False, "User not found.", 404)
+
+        if purpose == OTPPurpose.SIGNUP and user.is_email_verified:
+            return CustomResponse(False, "Email is already verified.", 400)
+
+        if purpose == OTPPurpose.PASSWORD_RESET and not user.is_active:
+            return CustomResponse(False, "User account is inactive.", 400)
+
+        otp = OTPCode.create_for_user(
+            user=user,
+            purpose=purpose,
+            expiry_seconds=_otp_expiry_seconds(),
+        )
+
+        if purpose == OTPPurpose.SIGNUP:
+            subject = "Welcome to Health Mate"
+            reason = "Verify your Health Mate account"
+        else:
+            subject = "Health Mate Password Reset OTP"
+            reason = "Use this OTP to reset your password"
+
+        _send_email(
+            subject=subject,
+            html_message=_build_otp_email(user.display_name, otp.code, reason),
+            recipient=user.email,
+        )
+
+        return CustomResponse(True, "OTP sent successfully.", 200)
+
+
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
 
@@ -310,8 +364,6 @@ class ResetPasswordView(APIView):
             200,
         )
 
-
-# ── Profile Setup Views ──────────────────────────────────────────────────────
 
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]

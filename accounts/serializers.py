@@ -1,4 +1,5 @@
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from .firebase import verify_id_token
@@ -30,7 +31,7 @@ class RegisterSerializer(serializers.Serializer, FirebaseTokenMixin):
     phone_number = serializers.CharField(required=False, allow_blank=True, max_length=20)
     date_of_birth = serializers.DateField(required=False, allow_null=True)
     gender = serializers.ChoiceField(
-        choices=["male", "female", "other"],
+        choices=CompanyUser._meta.get_field("gender").choices,
         required=False,
         allow_null=True,
         allow_blank=True
@@ -68,24 +69,52 @@ class VerifyOtpSerializer(serializers.Serializer):
     )
 
 
+class ResendOtpSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    purpose = serializers.ChoiceField(
+        choices=OTPPurpose.choices,
+        default=OTPPurpose.SIGNUP,
+        required=False,
+    )
+
+
 class ResetPasswordSerializer(serializers.Serializer):
-    action = serializers.ChoiceField(choices=["request", "confirm"])
+    action = serializers.ChoiceField(
+        choices=["request", "confirm"],
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        default=None,
+    )
     email = serializers.EmailField()
     otp_code = serializers.RegexField(regex=r"^\d{6}$", required=False)
+  
     new_password = serializers.CharField(
         required=False,
         write_only=True,
-        validators=[validate_password]
     )
 
     def validate(self, attrs):
-        action = attrs["action"]
+        action = attrs.get("action")
+        if not action:
+            has_confirm_fields = bool(attrs.get("otp_code") and attrs.get("new_password"))
+            action = "confirm" if has_confirm_fields else "request"
+            attrs["action"] = action
+
         if action == "confirm":
             if not attrs.get("otp_code"):
                 raise serializers.ValidationError({"otp_code": "otp_code is required for confirm action."})
-            if not attrs.get("new_password"):
+
+            new_password = attrs.get("new_password")
+            if not new_password:
                 raise serializers.ValidationError({"new_password": "new_password is required for confirm action."})
+            try:
+                validate_password(new_password)
+            except DjangoValidationError as e:
+                raise serializers.ValidationError({"new_password": list(e.messages)})
+
         return attrs
+
 
 class PersonalInformationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -104,6 +133,7 @@ class PersonalInformationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Date of birth must be in the past.")
         return value
 
+
 class MedicalInformationSerializer(serializers.ModelSerializer):
     class Meta:
         model = MedicalInformation
@@ -116,6 +146,7 @@ class MedicalInformationSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
 
 class EmergencyContactSerializer(serializers.ModelSerializer):
     class Meta:

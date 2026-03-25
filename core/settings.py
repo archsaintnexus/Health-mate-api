@@ -2,14 +2,12 @@ from pathlib import Path
 import os
 from datetime import timedelta
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+from celery.schedules import crontab
 
-# ── Secret Key ────────────────────────────────────────────────────────────────
+BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY environment variable is required")
-
-# ── Helper Functions ──────────────────────────────────────────────────────────
 def _env_bool(name: str, default: bool = False) -> bool:
     return os.getenv(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
 
@@ -25,11 +23,8 @@ def _env_int(name: str, default: int) -> int:
 def _env_list(name: str, default: str = "") -> list[str]:
     raw = os.getenv(name, default)
     return [item.strip() for item in raw.split(",") if item.strip()]
-
-# ── Core ──────────────────────────────────────────────────────────────────────
 DEBUG = _env_bool("DEBUG", False)
-ALLOWED_HOSTS = _env_list("ALLOWED_HOSTS", "localhost,127.0.0.1" if DEBUG else "")
-
+ALLOWED_HOSTS = _env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -37,24 +32,25 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'drf_spectacular',
     'corsheaders',
     'django_celery_beat',
-
+    'cloudinary',
     'accounts',
+    'consultation',
     'homecare',
     'pharmacy',
-]
+    'appointments',
+    'medicals',
 
-# ── Middleware ────────────────────────────────────────────────────────────────
+]
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -115,7 +111,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# ── Internationalization ──────────────────────────────────────────────────────
+# ── Internationalisation ──────────────────────────────────────────────────────
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
@@ -123,6 +119,7 @@ USE_TZ = True
 
 # ── Static Files ──────────────────────────────────────────────────────────────
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ── REST Framework ────────────────────────────────────────────────────────────
@@ -141,6 +138,48 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Healthcare platform for appointments, telemedicine, and medical services',
     'VERSION': '1.0.0',
     'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
+    'TAGS': [
+        {'name': 'Authentication', 'description': 'Register, Login, OTP, Password Reset'},
+        {'name': 'Profile', 'description': 'Personal, Medical, Emergency Contact'},
+        {'name': 'Appointments', 'description': 'Book, Cancel, Reschedule Appointments'},
+        {'name': 'Consultation', 'description': 'Video Consultations with Daily.co'},
+    ],
+    'SCHEMA_PATH_PREFIX': '/api/',
+    'ENUM_NAME_OVERRIDES': {
+        'AppointmentStatusEnum': [
+            ('pending', 'Pending'),
+            ('confirmed', 'Confirmed'),
+            ('cancelled', 'Cancelled'),
+            ('completed', 'Completed'),
+            ('rescheduled', 'Rescheduled'),
+            ('no_show', 'No Show'),
+        ],
+        'ConsultationTypeEnum': [
+            ('video', 'Video'),
+            ('audio', 'Audio'),
+            ('chat', 'Chat'),
+        ],
+        'ConsultationStatusEnum': [
+            ('scheduled', 'Scheduled'),
+            ('connecting', 'Connecting'),
+            ('active', 'Active'),
+            ('completed', 'Completed'),
+            ('cancelled', 'Cancelled'),
+            ('missed', 'Missed'),
+        ],
+        'LabTestStatusEnum': [
+            ('pending', 'Pending'),
+            ('scheduled', 'Scheduled'),
+            ('in_progress', 'In Progress'),
+            ('completed', 'Completed'),
+            ('cancelled', 'Cancelled'),
+        ],
+        'GenderEnum': [
+            ('male', 'Male'),
+            ('female', 'Female'),
+            ('other', 'Other'),
+        ],
+    },
 }
 
 # ── JWT ───────────────────────────────────────────────────────────────────────
@@ -179,8 +218,6 @@ FIREBASE_CONFIG = {
     "appId": os.getenv("FIREBASE_APP_ID", ""),
     "measurementId": os.getenv("FIREBASE_MEASUREMENT_ID", ""),
 }
-
-# ── Celery ────────────────────────────────────────────────────────────────────
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://redis:6379/0')
 CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://redis:6379/0')
 CELERY_ACCEPT_CONTENT = ['application/json']
@@ -189,11 +226,18 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
-# ── OTP Settings ──────────────────────────────────────────────────────────────
-OTP_EXPIRY_MINUTES = _env_int("OTP_EXPIRY_MINUTES", 10)
+CELERY_BEAT_SCHEDULE = {
+    "mark-missed-consultations": {
+        "task": "helper.tasks.mark_missed_consultations",
+        "schedule": crontab(minute="*/30"),
+    },
+    "cleanup-expired-rooms": {
+        "task": "helper.tasks.cleanup_expired_rooms",
+        "schedule": crontab(minute=0, hour="*/1"),
+    },
+}
+OTP_EXPIRY_SECONDS = _env_int("OTP_EXPIRY_SECONDS", 600)
 OTP_LENGTH = _env_int("OTP_LENGTH", 6)
-
-# ── Security Headers ──────────────────────────────────────────────────────────
 SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT", False)
 SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", False)
 CSRF_COOKIE_SECURE = _env_bool("CSRF_COOKIE_SECURE", False)
@@ -202,3 +246,6 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", not
 SECURE_HSTS_PRELOAD = _env_bool("SECURE_HSTS_PRELOAD", not DEBUG)
 SECURE_CONTENT_TYPE_NOSNIFF = _env_bool("SECURE_CONTENT_TYPE_NOSNIFF", True)
 X_FRAME_OPTIONS = os.getenv("X_FRAME_OPTIONS", "DENY")
+DAILY_API_KEY = os.getenv('DAILY_API_KEY', '')
+DAILY_API_URL = os.getenv('DAILY_API_URL', 'https://api.daily.co/v1')
+DAILY_SUBDOMAIN = os.getenv('DAILY_SUBDOMAIN', 'healthmateapp')

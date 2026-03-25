@@ -1,0 +1,130 @@
+from drf_spectacular.utils import extend_schema_field
+from rest_framework import serializers
+from .models import Consultation, ConsultationNote, DoctorProfile, ConsultationStatus
+
+
+class DoctorProfileSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(source="user.full_name", read_only=True)
+    email = serializers.CharField(source="user.email", read_only=True)
+
+    class Meta:
+        model = DoctorProfile
+        fields = [
+            "id",
+            "full_name",
+            "email",
+            "specialty",
+            "bio",
+            "clinical_expertise",
+            "languages",
+            "education",
+            "experience_years",
+            "consultation_type",
+            "rating",
+            "total_reviews",
+            "is_available",
+            "location",
+        ]
+
+
+class ConsultationNoteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConsultationNote
+        fields = [
+            "id",
+            "doctor_notes",
+            "diagnosis",
+            "prescription",
+            "follow_up_required",
+            "follow_up_date",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class ConsultationSerializer(serializers.ModelSerializer):
+    doctor = DoctorProfileSerializer(read_only=True)
+    note = ConsultationNoteSerializer(read_only=True)
+    patient_name = serializers.CharField(
+        source="patient.full_name",
+        read_only=True
+    )
+    is_upcoming = serializers.SerializerMethodField()
+    can_join = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Consultation
+        fields = [
+            "id",
+            "patient_name",
+            "doctor",
+            "consultation_type",
+            "status",
+            "room_url",
+            "scheduled_at",
+            "started_at",
+            "ended_at",
+            "duration_minutes",
+            "reason",
+            "is_upcoming",
+            "can_join",
+            "note",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id", "status", "room_url",
+            "started_at", "ended_at",
+            "duration_minutes", "created_at", "updated_at"
+        ]
+
+    @extend_schema_field(serializers.BooleanField)
+    def get_is_upcoming(self, obj) -> bool:
+        return obj.is_upcoming
+
+    @extend_schema_field(serializers.BooleanField)
+    def get_can_join(self, obj) -> bool:
+        return obj.can_join
+
+
+class CreateConsultationSerializer(serializers.Serializer):
+    doctor_id = serializers.IntegerField()
+    consultation_type = serializers.ChoiceField(
+        choices=Consultation._meta.get_field("consultation_type").choices,
+        default="video"
+    )
+    scheduled_at = serializers.DateTimeField()
+    reason = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_doctor_id(self, value):
+        from .models import DoctorProfile
+        if not DoctorProfile.objects.filter(id=value, is_available=True).exists():
+            raise serializers.ValidationError("Doctor not found or not available.")
+        return value
+
+    def validate_scheduled_at(self, value):
+        from django.utils import timezone
+        if value <= timezone.now():
+            raise serializers.ValidationError(
+                "Scheduled time must be in the future."
+            )
+        return value
+
+
+class JoinConsultationSerializer(serializers.Serializer):
+    """Returns room details for joining a consultation."""
+    room_url = serializers.URLField()
+    token = serializers.CharField()
+    consultation_id = serializers.IntegerField()
+    doctor = DoctorProfileSerializer()
+    status = serializers.CharField()
+
+
+class AddConsultationNoteSerializer(serializers.Serializer):
+    doctor_notes = serializers.CharField(required=False, allow_blank=True)
+    diagnosis = serializers.CharField(required=False, allow_blank=True)
+    prescription = serializers.CharField(required=False, allow_blank=True)
+    follow_up_required = serializers.BooleanField(default=False)
+    follow_up_date = serializers.DateField(required=False, allow_null=True)
+    

@@ -48,7 +48,7 @@ class AuthApiTests(TestCase):
             format="json",
         )
 
-        # debug output when tests are failing locally
+       
         if response.status_code != 200:
             print("LOGIN RESPONSE", response.status_code, response.data)
 
@@ -109,3 +109,49 @@ class AuthApiTests(TestCase):
         self.assertTrue(response.data["success"])
         self.assertTrue(user.check_password("StrongNewPass123!"))
         mock_update_password.assert_called_once_with("firebase-uid-3", "StrongNewPass123!")
+
+    @patch("accounts.views.send_a_mail.delay")
+    def test_resend_otp_signup_sends_new_otp(self, mock_send_email_delay):
+        user = CompanyUser.objects.create_user(
+            email="signup@user.com",
+            is_active=True,
+            is_email_verified=False,
+        )
+
+        response = self.client.post(
+            "/auth/resend-otp/",
+            {
+                "email": user.email,
+                "purpose": OTPPurpose.SIGNUP,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["success"])
+        self.assertTrue(
+            OTPCode.objects.filter(user=user, purpose=OTPPurpose.SIGNUP, is_used=False).exists()
+        )
+        mock_send_email_delay.assert_called_once()
+
+    @patch("accounts.views.send_a_mail.delay")
+    def test_resend_otp_signup_rejects_verified_email(self, mock_send_email_delay):
+        user = CompanyUser.objects.create_user(
+            email="verified-signup@user.com",
+            is_active=True,
+            is_email_verified=True,
+        )
+
+        response = self.client.post(
+            "/auth/resend-otp/",
+            {
+                "email": user.email,
+                "purpose": OTPPurpose.SIGNUP,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.data["success"])
+        self.assertEqual(response.data["message"], "Email is already verified.")
+        mock_send_email_delay.assert_not_called()
