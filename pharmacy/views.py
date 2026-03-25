@@ -2,19 +2,20 @@ from django.shortcuts import render
 from rest_framework.generics import (
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
-    ListAPIView,
+    ListAPIView, RetrieveAPIView
 )
 from rest_framework.views import APIView
 from rest_framework import permissions, status
 from rest_framework.response import Response
 
 
-from .models import PharmacyCategory, PharmacyProduct
+from .models import PharmacyCategory, PharmacyProduct, PharmacyOrder
 from .serializers import (
     PharmacyCategorySerializer,
     PharmacyProductSerializer,
     PharmacyOrderCreateSerializer,
     PharmacyOrderReadSerializer,
+    PharmacyOrderStatusSerializer
 )
 
 # Create your views here.
@@ -71,3 +72,15 @@ class PharmacyOrderCreateView(APIView):
         return Response(
             PharmacyOrderReadSerializer(order).data, status=status.HTTP_201_CREATED
         )
+
+
+
+# Order list tracking
+class PharmacyOrderListView(ListAPIView):
+    serializer_class = PharmacyOrderReadSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return PharmacyOrder.objects.prefetch_related("items__product").all()
+        return PharmacyOrder.objects.prefetch_related("items__product").filter(user=self.request.user)
