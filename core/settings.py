@@ -1,11 +1,15 @@
 from pathlib import Path
 import os
 from datetime import timedelta
+from decouple import config
 import logging
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ── Secret Key ────────────────────────────────────────────────────────────────
+
+os.environ.setdefault('SECRET_KEY', config('SECRET_KEY'))
+
+# ── Secret Key 
 # The project requires SECRET_KEY for cryptographic signing.  In production
 # this must be provided via environment variable; during tests the value is
 # unimportant so we fall back to a known dummy to avoid needing to export the
@@ -20,7 +24,7 @@ if not SECRET_KEY:
     else:
         raise ValueError("SECRET_KEY environment variable is required")
 
-# ── Helper Functions ──────────────────────────────────────────────────────────
+# ── Helper Functions 
 def _env_bool(name: str, default: bool = False) -> bool:
     return os.getenv(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
 
@@ -37,11 +41,11 @@ def _env_list(name: str, default: str = "") -> list[str]:
     raw = os.getenv(name, default)
     return [item.strip() for item in raw.split(",") if item.strip()]
 
-# ── Core ──────────────────────────────────────────────────────────────────────
+# ── Core 
 DEBUG = _env_bool("DEBUG", False)
 ALLOWED_HOSTS = _env_list("ALLOWED_HOSTS", "localhost,127.0.0.1" if DEBUG else "")
 
-# ── Installed Apps ────────────────────────────────────────────────────────────
+# ── Installed Apps 
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -62,9 +66,10 @@ INSTALLED_APPS = [
     'accounts',
     'homecare',
     'pharmacy',
+    'appointments', # This is for the appointments app..
 ]
 
-# ── Middleware ────────────────────────────────────────────────────────────────
+# ── Middleware =
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -152,7 +157,7 @@ SPECTACULAR_SETTINGS = {
     'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
 }
 
-# ── JWT ───────────────────────────────────────────────────────────────────────
+# ── JWT 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(seconds=_env_int("JWT_ACCESS_TOKEN_LIFETIME", 900)),
     'REFRESH_TOKEN_LIFETIME': timedelta(seconds=_env_int("JWT_REFRESH_TOKEN_LIFETIME", 604800)),
@@ -163,7 +168,7 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# ── CORS ──────────────────────────────────────────────────────────────────────
+# ── CORS 
 CORS_ALLOWED_ORIGINS = _env_list(
     "CORS_ALLOWED_ORIGINS",
     "http://localhost:3000,http://localhost:8000",
@@ -173,7 +178,7 @@ CSRF_TRUSTED_ORIGINS = _env_list(
     "http://localhost:3000,http://localhost:8000",
 )
 
-# ── Firebase ──────────────────────────────────────────────────────────────────
+# ── Firebase 
 FIREBASE_CREDENTIALS_PATH = os.getenv(
     'FIREBASE_CREDENTIALS_PATH',
     str(BASE_DIR / 'firebase-credentials.json')
@@ -189,7 +194,7 @@ FIREBASE_CONFIG = {
     "measurementId": os.getenv("FIREBASE_MEASUREMENT_ID", ""),
 }
 
-# ── Celery ────────────────────────────────────────────────────────────────────
+# ── Celery 
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://redis:6379/0')
 CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://redis:6379/0')
 CELERY_ACCEPT_CONTENT = ['application/json']
@@ -198,11 +203,11 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True   
 
-# ── OTP Settings ──────────────────────────────────────────────────────────────
+# ── OTP Settings 
 OTP_EXPIRY_MINUTES = _env_int("OTP_EXPIRY_MINUTES", 10)
 OTP_LENGTH = _env_int("OTP_LENGTH", 6)
 
-# ── Security Headers ──────────────────────────────────────────────────────────
+# ── Security Headers 
 SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT", False)
 SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", False)
 CSRF_COOKIE_SECURE = _env_bool("CSRF_COOKIE_SECURE", False)
