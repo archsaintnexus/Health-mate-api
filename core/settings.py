@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 from datetime import timedelta
 import logging
+from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -212,3 +213,23 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", not
 SECURE_HSTS_PRELOAD = _env_bool("SECURE_HSTS_PRELOAD", not DEBUG)
 SECURE_CONTENT_TYPE_NOSNIFF = _env_bool("SECURE_CONTENT_TYPE_NOSNIFF", True)
 X_FRAME_OPTIONS = os.getenv("X_FRAME_OPTIONS", "DENY")
+
+
+
+# PAYSTACK
+PAYSTACK_SECRET_KEY = config("PAYSTACK_SECRET_KEY")
+PAYSTACK_PUBLIC_KEY = config("PAYSTACK_PUBLIC_KEY")
+PAYSTACK_BASE_URL = "https://api.paystack.co"
+PAYSTACK_CALLBACK_URL = config("PAYSTACK_CALLBACK_URL")
+PAYSTACK_WEBHOOK_SECRET = config("PAYSTACK_WEBHOOK_SECRET", "")
+
+FRONTEND_ORDER_SUCCESS_URL = os.getenv(
+    "FRONTEND_ORDER_SUCCESS_URL",
+    "http://localhost:3000/pharmacy/order-confirmed/",
+)
+FRONTEND_PAYMENT_FAILED_URL = config(
+    "FRONTEND_PAYMENT_FAILED_URL",
+    "http://localhost:3000/pharmacy/payment-failed/",
+)
+
+print("PAYSTACK_SECRET_KEY: ", FRONTEND_ORDER_SUCCESS_URL)

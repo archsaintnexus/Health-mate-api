@@ -40,5 +40,12 @@ urlpatterns = [
     path("orders/<int:pk>/", views.MyOrderDetailView.as_view(), name="pharmacy-order-detail"),
     path("orders/<int:pk>/tracking/", views.OrderTrackingView.as_view(), name="pharmacy-order-tracking"),
 
-    path("", include(router.urls)),
+    path("orders/<int:order_id>/paystack/initialize/", views.InitializePaystackPaymentView.as_view(), name="paystack-initialize"),
+    path("orders/<int:order_id>/paystack/verify/", views.VerifyPaystackPaymentView.as_view(), name="paystack-verify"),
+    path("payments/callback/", views.PaystackCallbackView.as_view(), name="paystack-callback"),
+    path("payments/webhook/", views.PaystackWebhookView.as_view(), name="paystack-webhook"),
+
+    path("notifications/", views.PharmacyNotificationListView.as_view(), name="pharmacy-notifications"),
+
+    # path("", include(router.urls)),
 ]
