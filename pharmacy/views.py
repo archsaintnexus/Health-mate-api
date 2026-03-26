@@ -19,7 +19,15 @@ from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views import View
-from drf_spectacular.utils import extend_schema_view, extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+    inline_serializer,
+)
+from rest_framework import serializers
 
 from .permissions import IsOwnerOrAdmin, IsAdminUserOnly
 
@@ -90,7 +98,9 @@ class PharmacyCatalogView(ListAPIView):
 
 class CartView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CartSerializer
 
+    @extend_schema(responses=CartSerializer)
     def get(self, request):
         cart, _ = Cart.objects.get_or_create(user=request.user)
         return Response(CartSerializer(cart).data)
@@ -104,6 +114,7 @@ class CartView(APIView):
 )
 class AddToCartView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = AddToCartSerializer
 
     def post(self, request):
         serializer = AddToCartSerializer(data=request.data, context={"request": request})
@@ -113,13 +124,15 @@ class AddToCartView(APIView):
 
 
 @extend_schema_view(
-    post=extend_schema(
+    patch=extend_schema(
         request= UpdateCartItemSerializer,
         responses=CartSerializer
-    )
+    ),
+    delete=extend_schema(responses=CartSerializer),
 )
 class CartItemUpdateDeleteView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UpdateCartItemSerializer
 
     def patch(self, request, pk):
         cart_item = get_object_or_404(CartItem, pk=pk, cart__user=request.user)
@@ -141,6 +154,7 @@ class CartItemUpdateDeleteView(APIView):
                     ))
 class CheckoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CheckoutSerializer
 
     def post(self, request):
         serializer = CheckoutSerializer(data=request.data, context={"request": request})
@@ -210,6 +224,21 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
 class InitializePaystackPaymentView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        request=None,
+        responses={
+            200: inline_serializer(
+                name="PaystackInitializeResponse",
+                fields={
+                    "message": serializers.CharField(),
+                    "authorization_url": serializers.URLField(allow_null=True),
+                    "access_code": serializers.CharField(allow_null=True),
+                    "reference": serializers.CharField(allow_null=True),
+                    "order": PharmacyOrderSerializer(),
+                },
+            )
+        },
+    )
     def post(self, request, order_id):
         order = get_object_or_404(PharmacyOrder, id=order_id, user=request.user)
 
@@ -257,6 +286,24 @@ class InitializePaystackPaymentView(APIView):
 class VerifyPaystackPaymentView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        request=inline_serializer(
+            name="PaystackVerifyRequest",
+            fields={
+                "reference": serializers.CharField(required=False),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="PaystackVerifyResponse",
+                fields={
+                    "message": serializers.CharField(),
+                    "gateway_status": serializers.CharField(),
+                    "order": PharmacyOrderSerializer(),
+                },
+            )
+        },
+    )
     def post(self, request, order_id):
         order = get_object_or_404(PharmacyOrder, id=order_id, user=request.user)
         reference = request.data.get("reference") or order.payment_reference
@@ -322,6 +369,25 @@ class VerifyPaystackPaymentView(APIView):
 class PaystackCallbackView(APIView):
     permission_classes = []
 
+    @extend_schema(
+        request=None,
+        parameters=[
+            OpenApiParameter(
+                name="reference",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=True,
+                description="Paystack transaction reference",
+            ),
+        ],
+        responses={
+            302: OpenApiResponse(description="Redirects to frontend success or failed URL."),
+            400: inline_serializer(
+                name="PaystackCallbackBadRequest",
+                fields={"detail": serializers.CharField()},
+            ),
+        },
+    )
     def get(self, request):
         reference = request.query_params.get("reference")
         if not reference:

@@ -174,6 +174,20 @@ SPECTACULAR_SETTINGS = {
             ('completed', 'Completed'),
             ('cancelled', 'Cancelled'),
         ],
+        'PharmacyOrderStatusEnum': [
+            ('pending', 'Pending'),
+            ('confirmed', 'Confirmed'),
+            ('processing', 'Processing'),
+            ('out_for_delivery', 'Out for Delivery'),
+            ('delivered', 'Delivered'),
+            ('cancelled', 'Cancelled'),
+        ],
+        'PharmacyPaymentStatusEnum': [
+            ('pending', 'Pending'),
+            ('paid', 'Paid'),
+            ('failed', 'Failed'),
+            ('refunded', 'Refunded'),
+        ],
         'GenderEnum': [
             ('male', 'Male'),
             ('female', 'Female'),
@@ -249,3 +263,19 @@ X_FRAME_OPTIONS = os.getenv("X_FRAME_OPTIONS", "DENY")
 DAILY_API_KEY = os.getenv('DAILY_API_KEY', '')
 DAILY_API_URL = os.getenv('DAILY_API_URL', 'https://api.daily.co/v1')
 DAILY_SUBDOMAIN = os.getenv('DAILY_SUBDOMAIN', 'healthmateapp')
+
+# ── Paystack ──────────────────────────────────────────────────────────────────
+PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY", "")
+PAYSTACK_PUBLIC_KEY = os.getenv("PAYSTACK_PUBLIC_KEY", "")
+PAYSTACK_BASE_URL = os.getenv("PAYSTACK_BASE_URL", "https://api.paystack.co")
+PAYSTACK_CALLBACK_URL = os.getenv("PAYSTACK_CALLBACK_URL", "")
+PAYSTACK_WEBHOOK_SECRET = os.getenv("PAYSTACK_WEBHOOK_SECRET", "")
+
+FRONTEND_ORDER_SUCCESS_URL = os.getenv(
+    "FRONTEND_ORDER_SUCCESS_URL",
+    "http://localhost:3000/pharmacy/order-confirmed/",
+)
+FRONTEND_PAYMENT_FAILED_URL = os.getenv(
+    "FRONTEND_PAYMENT_FAILED_URL",
+    "http://localhost:3000/pharmacy/payment-failed/",
+)

@@ -3,6 +3,8 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema_field
 
 from .models import (
     Cart,
@@ -23,7 +25,8 @@ class PharmacyCategorySerializer(serializers.ModelSerializer):
         model = PharmacyCategory
         fields = ["id", "name", "slug", "image"]
 
-    def get_image(self, obj):
+    @extend_schema_field(OpenApiTypes.URI)
+    def get_image(self, obj) -> str | None:
         return obj.image.url if obj.image else None
 
 
@@ -50,7 +53,8 @@ class PharmacyProductSerializer(serializers.ModelSerializer):
             "in_stock",
         ]
 
-    def get_image(self, obj):
+    @extend_schema_field(OpenApiTypes.URI)
+    def get_image(self, obj) -> str | None:
         return obj.image.url if obj.image else None
 
 
@@ -62,7 +66,8 @@ class CartItemSerializer(serializers.ModelSerializer):
         model = CartItem
         fields = ["id", "product", "quantity", "line_total", "created_at", "updated_at"]
 
-    def get_line_total(self, obj):
+    @extend_schema_field(OpenApiTypes.DECIMAL)
+    def get_line_total(self, obj) -> Decimal:
         return obj.line_total
 
 
@@ -75,10 +80,12 @@ class CartSerializer(serializers.ModelSerializer):
         model = Cart
         fields = ["id", "items", "subtotal", "total_items", "created_at", "updated_at"]
 
-    def get_subtotal(self, obj):
+    @extend_schema_field(OpenApiTypes.DECIMAL)
+    def get_subtotal(self, obj) -> Decimal:
         return obj.subtotal
 
-    def get_total_items(self, obj):
+    @extend_schema_field(OpenApiTypes.INT)
+    def get_total_items(self, obj) -> int:
         return obj.total_items
 
 
@@ -162,10 +169,12 @@ class PharmacyOrderItemSerializer(serializers.ModelSerializer):
             "line_total",
         ]
 
-    def get_product_image(self, obj):
+    @extend_schema_field(OpenApiTypes.URI)
+    def get_product_image(self, obj) -> str | None:
         return obj.product.image.url if obj.product.image else None
 
-    def get_line_total(self, obj):
+    @extend_schema_field(OpenApiTypes.DECIMAL)
+    def get_line_total(self, obj) -> Decimal:
         return obj.line_total
 
 
