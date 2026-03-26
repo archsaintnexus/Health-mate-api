@@ -255,6 +255,9 @@ class InitializePaystackPaymentView(APIView):
 
 
 class VerifyPaystackPaymentView(APIView):
+    '''
+    To verify/confirm payment manually or incase callback fails
+    '''
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, order_id):
@@ -367,64 +370,6 @@ class PaystackCallbackView(APIView):
         return redirect(f"{settings.FRONTEND_PAYMENT_FAILED_URL}{order.id}")
 
 
-@method_decorator(csrf_exempt, name="dispatch")
-class PaystackWebhookView(View):
-    def post(self, request, *args, **kwargs):
-        secret = settings.PAYSTACK_WEBHOOK_SECRET
-        signature = request.headers.get("x-paystack-signature", "")
-
-        if secret:
-            computed = hmac.new(
-                secret.encode("utf-8"),
-                request.body,
-                hashlib.sha512
-            ).hexdigest()
-
-            if computed != signature:
-                return HttpResponse(status=400)
-
-        payload = json.loads(request.body.decode("utf-8"))
-        event = payload.get("event")
-        data = payload.get("data", {})
-        reference = data.get("reference")
-
-        if not reference:
-            return HttpResponse(status=200)
-
-        try:
-            order = PharmacyOrder.objects.get(payment_reference=reference)
-        except PharmacyOrder.DoesNotExist:
-            return HttpResponse(status=200)
-
-        if event == "charge.success":
-            if order.payment_status != PharmacyOrder.PaymentStatus.PAID:
-                order.payment_status = PharmacyOrder.PaymentStatus.PAID
-                order.status = PharmacyOrder.Status.CONFIRMED
-                order.save(update_fields=["payment_status", "status", "updated_at"])
-
-                for item in order.items.select_related("product").all():
-                    item.product.stock_quantity -= item.quantity
-                    item.product.save(update_fields=["stock_quantity", "updated_at"])
-
-                OrderTrackingEvent.objects.create(
-                    order=order,
-                    status=PharmacyOrder.Status.CONFIRMED,
-                    title="Payment Confirmed",
-                    note="Your payment was confirmed via webhook.",
-                    event_time=timezone.now(),
-                )
-
-                PharmacyNotification.objects.create(
-                    user=order.user,
-                    title="Payment Successful",
-                    message=f"Payment for order {order.order_number} was confirmed.",
-                )
-
-                cart = Cart.objects.filter(user=order.user).first()
-                if cart:
-                    cart.items.all().delete()
-
-        return HttpResponse(status=200)
     
 
 class PharmacyNotificationListView(generics.ListAPIView):
