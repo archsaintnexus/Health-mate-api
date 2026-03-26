@@ -1,6 +1,5 @@
-# Health Mate API — Authentication Service
-
-A secure, production-ready authentication and user profile management service built with **Django**, **Firebase Admin SDK**, **Celery**, **Redis**, and **PostgreSQL** — fully containerised with Docker.
+Health Mate API
+A secure, production-ready healthcare platform API built with Django REST Framework, Firebase Authentication, PostgreSQL, Redis, Celery, and Docker.
 
 ---
 
@@ -27,20 +26,19 @@ A secure, production-ready authentication and user profile management service bu
 ---
 
 ## Overview
-
-Health Mate Authentication Service handles all user identity and access management for the Health Mate platform. It uses **Firebase Authentication** for identity verification and **Django REST Framework + SimpleJWT** for API access control.
+Health Mate connects patients with healthcare providers through a secure API-driven platform supporting appointment booking, video consultations, medical records management, lab test tracking, and pharmacy services.
 
 ### Key Features
 
-- Firebase ID token verification on every login/register request
-- OTP-based email verification on signup
-- Two-step password reset via OTP
-- JWT access and refresh tokens with blacklisting on logout
-- Role-based access control (Patient, Provider, Admin, Family Member)
-- Async email delivery via Celery + Resend API
-- Redis-backed rate limiting and caching
-- Auto-generated Swagger/OpenAPI documentation
-
+- Firebase Authentication + Django JWT dual-token strategy
+- OTP-based email verification with brute force protection
+- Role-based access control (Patient, Provider, Admin, Caregiver)
+- Video consultations via Daily.co
+- Async email delivery via Celery + Resend
+- Medical records with vital signs, prescriptions, and care plans
+- Lab test booking and result tracking
+- Appointment booking with doctor availability slots
+- HIPAA-compliant data storage and transmission
 ---
 
 ## Tech Stack
@@ -59,13 +57,15 @@ Health Mate Authentication Service handles all user identity and access manageme
 | Resend | — | Email delivery |
 | Cloudinary | 1.44.1 | Media storage for pharmacy images |
 | Docker | — | Containerisation |
+|Daily.co |APILatestVideo |consultations|
+|Gunicorn |23.0.0| |Production server|
 
 ---
 
 ## Project Structure
 
 ```text
-Health-mate-api/
+django-structure/
 ├── core/                        # Django config
 │   ├── settings.py
 │   ├── celery.py
@@ -152,45 +152,38 @@ docker-compose exec web python manage.py createsuperuser
 
 ---
 
-## Environment Variables
-
-Create a `.env` file in the project root:
-
-```env
-# Django
-SECRET_KEY=your-secret-key-here
+SECRET_KEY=your-secret-key
 DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
 
-# Database
 DB_NAME=health_mate
 DB_USER=postgres
 DB_PASSWORD=postgres
 DB_HOST=db
 DB_PORT=5432
 
-# Redis & Celery
 REDIS_URL=redis://redis:6379/1
 CELERY_BROKER_URL=redis://redis:6379/0
 CELERY_RESULT_BACKEND=redis://redis:6379/0
 
-# Firebase
-FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
+FIREBASE_CREDENTIALS_PATH=/app/django-structure/firebase-credentials.json
 FIREBASE_API_KEY=your-firebase-api-key
 FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
 FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_APP_ID=your-app-id
 
-# Email (Resend)
-RESEND_API_KEY=re_xxxxxxxxxxxx
+RESEND_API_KEY=re_xxxx
 RESEND_FROM_EMAIL=noreply@yourdomain.com
 
-# JWT
+DAILY_API_KEY=your-daily-api-key
+DAILY_API_URL=https://api.daily.co/v1
+DAILY_SUBDOMAIN=yourapp
+
 JWT_ACCESS_TOKEN_LIFETIME=900
 JWT_REFRESH_TOKEN_LIFETIME=604800
-
-# OTP
 OTP_EXPIRY_SECONDS=600
+
+CORS_ALLOWED_ORIGINS=http://localhost:3000
+CSRF_TRUSTED_ORIGINS=http://localhost:3000
 ```
 
 > ⚠️ Never commit `.env` or `firebase-credentials.json` to version control.
