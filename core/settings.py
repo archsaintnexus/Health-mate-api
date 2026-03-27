@@ -3,6 +3,11 @@ import os
 from datetime import timedelta
 from decouple import config
 import logging
+from decouple import config
+
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -61,6 +66,9 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'corsheaders',
     'django_celery_beat',                        # ← already added, kept
+
+    "cloudinary",
+    "cloudinary_storage",
 
     # local apps
     'accounts',
@@ -144,6 +152,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.BasicAuthentication', # Temporarily Added this so that other developers can contribute using basic authentication without having to configure firebase
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated', 
@@ -216,3 +225,31 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", not
 SECURE_HSTS_PRELOAD = _env_bool("SECURE_HSTS_PRELOAD", not DEBUG)
 SECURE_CONTENT_TYPE_NOSNIFF = _env_bool("SECURE_CONTENT_TYPE_NOSNIFF", True)
 X_FRAME_OPTIONS = os.getenv("X_FRAME_OPTIONS", "DENY")
+
+
+
+# PAYSTACK
+PAYSTACK_SECRET_KEY = config("PAYSTACK_SECRET_KEY")
+PAYSTACK_PUBLIC_KEY = config("PAYSTACK_PUBLIC_KEY")
+PAYSTACK_BASE_URL = "https://api.paystack.co"
+PAYSTACK_CALLBACK_URL = config("PAYSTACK_CALLBACK_URL")
+
+FRONTEND_ORDER_SUCCESS_URL = os.getenv(
+    "FRONTEND_ORDER_SUCCESS_URL",
+    "http://localhost:3000/pharmacy/order-confirmed/",
+)
+FRONTEND_PAYMENT_FAILED_URL = config(
+    "FRONTEND_PAYMENT_FAILED_URL",
+    "http://localhost:3000/pharmacy/payment-failed/",
+)
+
+#Cloudinary
+
+cloudinary.config(
+    cloud_name=config("CLOUDINARY_CLOUD_NAME"),
+    api_key=config("CLOUDINARY_API_KEY"),
+    api_secret=config("CLOUDINARY_API_SECRET")
+)
+
+DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
+
