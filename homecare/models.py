@@ -1,9 +1,9 @@
-from django.db import models
 from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator
+from django.db import models
 
-
-# Create your models here.
 User = get_user_model()
+
 
 class TimeStampedModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
@@ -14,9 +14,10 @@ class TimeStampedModel(models.Model):
 
 
 class HomeCareService(TimeStampedModel):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, unique=True)
+    slug = models.SlugField(unique=True)
     description = models.TextField(blank=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, validators=[MinValueValidator(0)])
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -24,6 +25,25 @@ class HomeCareService(TimeStampedModel):
 
     def __str__(self):
         return self.name
+
+
+class HomeCareTimeSlot(TimeStampedModel):
+    service = models.ForeignKey(
+        HomeCareService,
+        on_delete=models.CASCADE,
+        related_name="time_slots"
+    )
+    label = models.CharField(max_length=50)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["start_time"]
+        unique_together = ("service", "label")
+
+    def __str__(self):
+        return f"{self.service.name} - {self.label}"
 
 
 class HomeCareRequest(TimeStampedModel):
@@ -44,15 +64,20 @@ class HomeCareRequest(TimeStampedModel):
         on_delete=models.PROTECT,
         related_name="requests"
     )
-    preferred_time = models.DateTimeField()
-    address = models.CharField(max_length=200)
-    phone_number = models.CharField(max_length=20)
+    time_slot = models.ForeignKey(
+        HomeCareTimeSlot,
+        on_delete=models.PROTECT,
+        related_name="requests"
+    )
+    request_date = models.DateField()
+    description = models.TextField(blank=True)
+    address = models.TextField(blank=True)
+    phone_number = models.CharField(max_length=30)
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
         default=Status.PENDING
     )
-    notes = models.TextField(blank=True)
 
     class Meta:
         ordering = ["-created_at"]

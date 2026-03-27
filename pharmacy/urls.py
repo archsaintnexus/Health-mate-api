@@ -47,5 +47,5 @@ urlpatterns = [
 
     path("notifications/", views.PharmacyNotificationListView.as_view(), name="pharmacy-notifications"),
 
-    # path("", include(router.urls)),
+    path("", include(router.urls)),
 ]

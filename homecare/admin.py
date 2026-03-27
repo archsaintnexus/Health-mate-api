@@ -1,14 +1,26 @@
 from django.contrib import admin
-from .models import HomeCareService, HomeCareRequest, HomeCareNotification
 
-# Register your models here.
+from .models import (
+    HomeCareNotification,
+    HomeCareRequest,
+    HomeCareService,
+    HomeCareTimeSlot,
+)
 
 
 @admin.register(HomeCareService)
 class HomeCareServiceAdmin(admin.ModelAdmin):
-    list_display = ("name", "price", "is_active", "created_at")
+    list_display = ("name", "slug", "price", "is_active", "created_at")
     list_filter = ("is_active",)
-    search_fields = ("name",)
+    search_fields = ("name", "description")
+    prepopulated_fields = {"slug": ("name",)}
+
+
+@admin.register(HomeCareTimeSlot)
+class HomeCareTimeSlotAdmin(admin.ModelAdmin):
+    list_display = ("service", "label", "start_time", "end_time", "is_active")
+    list_filter = ("service", "is_active")
+    search_fields = ("label", "service__name")
 
 
 @admin.register(HomeCareRequest)
@@ -17,13 +29,14 @@ class HomeCareRequestAdmin(admin.ModelAdmin):
         "id",
         "user",
         "service",
-        "preferred_time",
-        "status",
+        "request_date",
+        "time_slot",
         "phone_number",
+        "status",
         "created_at",
     )
-    list_filter = ("status", "service", "preferred_time")
-    search_fields = ("user__username", "phone_number", "address")
+    list_filter = ("status", "service", "request_date")
+    search_fields = ("user__username", "address", "phone_number")
 
 
 @admin.register(HomeCareNotification)

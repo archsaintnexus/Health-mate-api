@@ -19,6 +19,7 @@ from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views import View
+from rest_framework import mixins
 from drf_spectacular.utils import extend_schema_view, extend_schema
 
 from .permissions import IsOwnerOrAdmin, IsAdminUserOnly
@@ -187,7 +188,9 @@ class OrderTrackingView(generics.RetrieveAPIView):
 
 
 
-class AdminOrderViewSet(viewsets.ModelViewSet):
+class AdminOrderViewSet(mixins.RetrieveModelMixin,
+                                  mixins.ListModelMixin,
+                                    viewsets.GenericViewSet):
     queryset = PharmacyOrder.objects.prefetch_related("items__product", "tracking_events").all()
     permission_classes = [permissions.IsAuthenticated, IsAdminUserOnly]
 
