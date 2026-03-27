@@ -3,8 +3,6 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema_field
 
 from .models import (
     Cart,
@@ -25,14 +23,14 @@ class PharmacyCategorySerializer(serializers.ModelSerializer):
         model = PharmacyCategory
         fields = ["id", "name", "slug", "image"]
 
-    @extend_schema_field(OpenApiTypes.URI)
     def get_image(self, obj) -> str | None:
         return obj.image.url if obj.image else None
 
 
 class PharmacyProductSerializer(serializers.ModelSerializer):
     category = PharmacyCategorySerializer(read_only=True)
-    image = serializers.SerializerMethodField()
+    image = serializers.ImageField(write_only=True, required=False)
+    image_url = serializers.SerializerMethodField()
     in_stock = serializers.BooleanField(read_only=True)
 
     class Meta:
@@ -41,7 +39,8 @@ class PharmacyProductSerializer(serializers.ModelSerializer):
             "id",
             "category",
             "name",
-            "image",
+            "image",        # upload field
+            "image_url",    # read-only URL
             "slug",
             "description",
             "price",
@@ -53,10 +52,9 @@ class PharmacyProductSerializer(serializers.ModelSerializer):
             "in_stock",
         ]
 
-    @extend_schema_field(OpenApiTypes.URI)
-    def get_image(self, obj) -> str | None:
+    def get_image_url(self, obj) -> str | None:
         return obj.image.url if obj.image else None
-
+    
 
 class CartItemSerializer(serializers.ModelSerializer):
     product = PharmacyProductSerializer(read_only=True)
@@ -66,7 +64,6 @@ class CartItemSerializer(serializers.ModelSerializer):
         model = CartItem
         fields = ["id", "product", "quantity", "line_total", "created_at", "updated_at"]
 
-    @extend_schema_field(OpenApiTypes.DECIMAL)
     def get_line_total(self, obj) -> Decimal:
         return obj.line_total
 
@@ -80,11 +77,9 @@ class CartSerializer(serializers.ModelSerializer):
         model = Cart
         fields = ["id", "items", "subtotal", "total_items", "created_at", "updated_at"]
 
-    @extend_schema_field(OpenApiTypes.DECIMAL)
     def get_subtotal(self, obj) -> Decimal:
         return obj.subtotal
 
-    @extend_schema_field(OpenApiTypes.INT)
     def get_total_items(self, obj) -> int:
         return obj.total_items
 
@@ -169,11 +164,9 @@ class PharmacyOrderItemSerializer(serializers.ModelSerializer):
             "line_total",
         ]
 
-    @extend_schema_field(OpenApiTypes.URI)
     def get_product_image(self, obj) -> str | None:
         return obj.product.image.url if obj.product.image else None
 
-    @extend_schema_field(OpenApiTypes.DECIMAL)
     def get_line_total(self, obj) -> Decimal:
         return obj.line_total
 

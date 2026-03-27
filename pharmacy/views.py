@@ -9,25 +9,15 @@ from django.utils import timezone
 from rest_framework.generics import (
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
-    ListAPIView, RetrieveAPIView
+    ListAPIView
 )
 from rest_framework.views import APIView
 from rest_framework import permissions, status, generics, viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from django.http import HttpResponse
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
-from django.views import View
+from rest_framework import mixins
+from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiParameter,
-    OpenApiResponse,
-    extend_schema,
-    extend_schema_view,
-    inline_serializer,
-)
-from rest_framework import serializers
 
 from .permissions import IsOwnerOrAdmin, IsAdminUserOnly
 
@@ -75,6 +65,7 @@ class PharmacyCategoryDetailView(RetrieveUpdateDestroyAPIView):
 
 
 ## Create CRUD for  products
+
 class PharmacyProductListCreateView(ListCreateAPIView):
     queryset = PharmacyProduct.objects.all()
     serializer_class = PharmacyProductSerializer
@@ -98,9 +89,11 @@ class PharmacyCatalogView(ListAPIView):
 
 class CartView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = CartSerializer
 
-    @extend_schema(responses=CartSerializer)
+    @extend_schema(
+        summary="Get current user's cart",
+        responses={200: CartSerializer},
+    )
     def get(self, request):
         cart, _ = Cart.objects.get_or_create(user=request.user)
         return Response(CartSerializer(cart).data)
@@ -114,7 +107,6 @@ class CartView(APIView):
 )
 class AddToCartView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = AddToCartSerializer
 
     def post(self, request):
         serializer = AddToCartSerializer(data=request.data, context={"request": request})
@@ -132,7 +124,6 @@ class AddToCartView(APIView):
 )
 class CartItemUpdateDeleteView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = UpdateCartItemSerializer
 
     def patch(self, request, pk):
         cart_item = get_object_or_404(CartItem, pk=pk, cart__user=request.user)
@@ -154,7 +145,6 @@ class CartItemUpdateDeleteView(APIView):
                     ))
 class CheckoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = CheckoutSerializer
 
     def post(self, request):
         serializer = CheckoutSerializer(data=request.data, context={"request": request})
@@ -201,7 +191,9 @@ class OrderTrackingView(generics.RetrieveAPIView):
 
 
 
-class AdminOrderViewSet(viewsets.ModelViewSet):
+class AdminOrderViewSet(mixins.RetrieveModelMixin,
+                                  mixins.ListModelMixin,
+                                    viewsets.GenericViewSet):
     queryset = PharmacyOrder.objects.prefetch_related("items__product", "tracking_events").all()
     permission_classes = [permissions.IsAuthenticated, IsAdminUserOnly]
 
@@ -221,24 +213,16 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
 
 
 # Payments
+@extend_schema_view(
+    post=extend_schema(
+        summary="Initialize Paystack payment",
+        request=None,
+        responses={200: PharmacyOrderSerializer},
+    )
+)
 class InitializePaystackPaymentView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    @extend_schema(
-        request=None,
-        responses={
-            200: inline_serializer(
-                name="PaystackInitializeResponse",
-                fields={
-                    "message": serializers.CharField(),
-                    "authorization_url": serializers.URLField(allow_null=True),
-                    "access_code": serializers.CharField(allow_null=True),
-                    "reference": serializers.CharField(allow_null=True),
-                    "order": PharmacyOrderSerializer(),
-                },
-            )
-        },
-    )
     def post(self, request, order_id):
         order = get_object_or_404(PharmacyOrder, id=order_id, user=request.user)
 
@@ -284,25 +268,15 @@ class InitializePaystackPaymentView(APIView):
 
 
 class VerifyPaystackPaymentView(APIView):
+    '''
+    To verify/confirm payment manually or incase callback fails
+    '''
     permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(
-        request=inline_serializer(
-            name="PaystackVerifyRequest",
-            fields={
-                "reference": serializers.CharField(required=False),
-            },
-        ),
-        responses={
-            200: inline_serializer(
-                name="PaystackVerifyResponse",
-                fields={
-                    "message": serializers.CharField(),
-                    "gateway_status": serializers.CharField(),
-                    "order": PharmacyOrderSerializer(),
-                },
-            )
-        },
+        summary="Verify Paystack payment",
+        request=OpenApiTypes.OBJECT,
+        responses={200: PharmacyOrderSerializer, 400: PharmacyOrderSerializer},
     )
     def post(self, request, order_id):
         order = get_object_or_404(PharmacyOrder, id=order_id, user=request.user)
@@ -370,7 +344,7 @@ class PaystackCallbackView(APIView):
     permission_classes = []
 
     @extend_schema(
-        request=None,
+        summary="Paystack callback endpoint",
         parameters=[
             OpenApiParameter(
                 name="reference",
@@ -378,15 +352,10 @@ class PaystackCallbackView(APIView):
                 location=OpenApiParameter.QUERY,
                 required=True,
                 description="Paystack transaction reference",
-            ),
+            )
         ],
-        responses={
-            302: OpenApiResponse(description="Redirects to frontend success or failed URL."),
-            400: inline_serializer(
-                name="PaystackCallbackBadRequest",
-                fields={"detail": serializers.CharField()},
-            ),
-        },
+        request=None,
+        responses={302: OpenApiTypes.NONE, 400: OpenApiTypes.OBJECT},
     )
     def get(self, request):
         reference = request.query_params.get("reference")
@@ -433,64 +402,6 @@ class PaystackCallbackView(APIView):
         return redirect(f"{settings.FRONTEND_PAYMENT_FAILED_URL}{order.id}")
 
 
-@method_decorator(csrf_exempt, name="dispatch")
-class PaystackWebhookView(View):
-    def post(self, request, *args, **kwargs):
-        secret = settings.PAYSTACK_WEBHOOK_SECRET
-        signature = request.headers.get("x-paystack-signature", "")
-
-        if secret:
-            computed = hmac.new(
-                secret.encode("utf-8"),
-                request.body,
-                hashlib.sha512
-            ).hexdigest()
-
-            if computed != signature:
-                return HttpResponse(status=400)
-
-        payload = json.loads(request.body.decode("utf-8"))
-        event = payload.get("event")
-        data = payload.get("data", {})
-        reference = data.get("reference")
-
-        if not reference:
-            return HttpResponse(status=200)
-
-        try:
-            order = PharmacyOrder.objects.get(payment_reference=reference)
-        except PharmacyOrder.DoesNotExist:
-            return HttpResponse(status=200)
-
-        if event == "charge.success":
-            if order.payment_status != PharmacyOrder.PaymentStatus.PAID:
-                order.payment_status = PharmacyOrder.PaymentStatus.PAID
-                order.status = PharmacyOrder.Status.CONFIRMED
-                order.save(update_fields=["payment_status", "status", "updated_at"])
-
-                for item in order.items.select_related("product").all():
-                    item.product.stock_quantity -= item.quantity
-                    item.product.save(update_fields=["stock_quantity", "updated_at"])
-
-                OrderTrackingEvent.objects.create(
-                    order=order,
-                    status=PharmacyOrder.Status.CONFIRMED,
-                    title="Payment Confirmed",
-                    note="Your payment was confirmed via webhook.",
-                    event_time=timezone.now(),
-                )
-
-                PharmacyNotification.objects.create(
-                    user=order.user,
-                    title="Payment Successful",
-                    message=f"Payment for order {order.order_number} was confirmed.",
-                )
-
-                cart = Cart.objects.filter(user=order.user).first()
-                if cart:
-                    cart.items.all().delete()
-
-        return HttpResponse(status=200)
     
 
 class PharmacyNotificationListView(generics.ListAPIView):

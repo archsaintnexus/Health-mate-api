@@ -3,6 +3,7 @@ import os
 from datetime import timedelta
 
 from celery.schedules import crontab
+import cloudinary
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
@@ -279,3 +280,12 @@ FRONTEND_PAYMENT_FAILED_URL = os.getenv(
     "FRONTEND_PAYMENT_FAILED_URL",
     "http://localhost:3000/pharmacy/payment-failed/",
 )
+
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME", ""),
+    api_key=os.getenv("CLOUDINARY_API_KEY", ""),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET", ""),
+)
+
+DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
