@@ -9,16 +9,12 @@ from django.utils import timezone
 from rest_framework.generics import (
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
-    ListAPIView, RetrieveAPIView
+    ListAPIView
 )
 from rest_framework.views import APIView
 from rest_framework import permissions, status, generics, viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from django.http import HttpResponse
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
-from django.views import View
 from rest_framework import mixins
 from drf_spectacular.utils import extend_schema_view, extend_schema
 
@@ -68,6 +64,7 @@ class PharmacyCategoryDetailView(RetrieveUpdateDestroyAPIView):
 
 
 ## Create CRUD for  products
+
 class PharmacyProductListCreateView(ListCreateAPIView):
     queryset = PharmacyProduct.objects.all()
     serializer_class = PharmacyProductSerializer

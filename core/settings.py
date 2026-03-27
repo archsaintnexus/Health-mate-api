@@ -4,6 +4,10 @@ from datetime import timedelta
 import logging
 from decouple import config
 
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ── Secret Key ────────────────────────────────────────────────────────────────
@@ -58,6 +62,9 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'corsheaders',
     'django_celery_beat',                        # ← already added, kept
+
+    "cloudinary",
+    "cloudinary_storage",
 
     # local apps
     'accounts',
@@ -231,4 +238,13 @@ FRONTEND_PAYMENT_FAILED_URL = config(
     "http://localhost:3000/pharmacy/payment-failed/",
 )
 
-print("PAYSTACK_SECRET_KEY: ", FRONTEND_ORDER_SUCCESS_URL)
+#Cloudinary
+
+cloudinary.config(
+    cloud_name=config("CLOUDINARY_CLOUD_NAME"),
+    api_key=config("CLOUDINARY_API_KEY"),
+    api_secret=config("CLOUDINARY_API_SECRET")
+)
+
+DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
+

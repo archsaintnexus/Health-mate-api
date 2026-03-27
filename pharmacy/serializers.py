@@ -29,7 +29,8 @@ class PharmacyCategorySerializer(serializers.ModelSerializer):
 
 class PharmacyProductSerializer(serializers.ModelSerializer):
     category = PharmacyCategorySerializer(read_only=True)
-    image = serializers.SerializerMethodField()
+    image = serializers.ImageField(write_only=True, required=False)
+    image_url = serializers.SerializerMethodField()
     in_stock = serializers.BooleanField(read_only=True)
 
     class Meta:
@@ -38,7 +39,8 @@ class PharmacyProductSerializer(serializers.ModelSerializer):
             "id",
             "category",
             "name",
-            "image",
+            "image",        # upload field
+            "image_url",    # read-only URL
             "slug",
             "description",
             "price",
@@ -50,9 +52,9 @@ class PharmacyProductSerializer(serializers.ModelSerializer):
             "in_stock",
         ]
 
-    def get_image(self, obj):
+    def get_image_url(self, obj):
         return obj.image.url if obj.image else None
-
+    
 
 class CartItemSerializer(serializers.ModelSerializer):
     product = PharmacyProductSerializer(read_only=True)
