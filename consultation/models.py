@@ -151,6 +151,7 @@ class ConsultationNote(models.Model):
     prescription = models.TextField(blank=True, default="")
     follow_up_required = models.BooleanField(default=False)
     follow_up_date = models.DateField(null=True, blank=True)
+    is_reviewed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -4,10 +4,6 @@ from . import views
 app_name = "consultation"
 
 urlpatterns = [
-    # ── Doctors ──────────────────────────────────────────────────
-    path("doctors/", views.DoctorListView.as_view(), name="doctor-list"),
-    path("doctors/<int:pk>/", views.DoctorDetailView.as_view(), name="doctor-detail"),
-
     # ── Consultations ─────────────────────────────────────────────
     path("", views.ConsultationListView.as_view(), name="consultation-list"),
     path("<int:pk>/", views.ConsultationDetailView.as_view(), name="consultation-detail"),

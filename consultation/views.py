@@ -18,70 +18,13 @@ from .permissions import (
     IsPatient,
 )
 from .serializers import (
-    AddConsultationNoteSerializer,
+    NotesSerializer,
+    ConsultationListSerializer,
     ConsultationSerializer,
     CreateConsultationSerializer,
     DoctorProfileSerializer,
 )
-from .services import DailyCoService
-
-
-# ── Doctor Views ─────────────────────────────────────────────────────────────
-
-class DoctorListView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(
-        operation_id="consultation_doctors_list",
-        responses={200: DoctorProfileSerializer(many=True)},
-        description="List all available doctors with optional filters.",
-        tags=["Consultation"],
-    )
-    def get(self, request):
-        doctors = DoctorProfile.objects.filter(is_available=True).select_related("user")
-
-        # Filters
-        specialty = request.query_params.get("specialty")
-        location = request.query_params.get("location")
-        consultation_type = request.query_params.get("consultation_type")
-
-        if specialty:
-            doctors = doctors.filter(specialty__icontains=specialty)
-        if location:
-            doctors = doctors.filter(location__icontains=location)
-        if consultation_type:
-            doctors = doctors.filter(consultation_type=consultation_type)
-
-        serializer = DoctorProfileSerializer(doctors, many=True)
-        return CustomResponse(
-            True,
-            "Doctors retrieved successfully.",
-            200,
-            serializer.data,
-        )
-
-
-class DoctorDetailView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(
-        operation_id="consultation_doctors_detail",
-        responses={200: DoctorProfileSerializer},
-        description="Get a doctor's full profile.",
-        tags=["Consultation"],
-    )
-    def get(self, request, pk):
-        doctor = DoctorProfile.objects.filter(pk=pk).select_related("user").first()
-        if not doctor:
-            return CustomResponse(False, "Doctor not found.", 404)
-
-        serializer = DoctorProfileSerializer(doctor)
-        return CustomResponse(
-            True,
-            "Doctor profile retrieved successfully.",
-            200,
-            serializer.data,
-        )
+from .services import ConsultationService
 
 
 # ── Consultation Views ───────────────────────────────────────────────────────
@@ -91,7 +34,7 @@ class ConsultationListView(APIView):
 
     @extend_schema(
         operation_id="consultation_list",
-        responses={200: ConsultationSerializer(many=True)},
+        responses={200: ConsultationListSerializer(many=True)},
         description="List all consultations for the authenticated user.",
         tags=["Consultation"],
     )
@@ -108,7 +51,7 @@ class ConsultationListView(APIView):
                 patient=user
             ).select_related("doctor__user")
 
-        serializer = ConsultationSerializer(consultations, many=True)
+        serializer = ConsultationListSerializer(consultations, many=True)
         return CustomResponse(
             True,
             "Consultations retrieved successfully.",
@@ -202,45 +145,21 @@ class JoinConsultationView(APIView):
 
         self.check_object_permissions(request, consultation)
 
-        if not consultation.can_join:
-            return CustomResponse(
-                False,
-                "This consultation cannot be joined at this time.",
-                400,
+        try:
+            join_payload = ConsultationService.join_consultation(
+                consultation=consultation,
+                user=request.user,
             )
-
-        # Create Daily.co room if not exists
-        if not consultation.room_url:
-            try:
-                room_data = DailyCoService.setup_consultation_room(consultation)
-                consultation.room_name = room_data["room_name"]
-                consultation.room_url = room_data["room_url"]
-                consultation.patient_token = room_data["patient_token"]
-                consultation.doctor_token = room_data["doctor_token"]
-                consultation.status = ConsultationStatus.CONNECTING
-                consultation.save()
-            except Exception as e:
-                return CustomResponse(
-                    False,
-                    "Failed to create consultation room. Try again.",
-                    502,
-                )
-
-        # Return correct token based on who is joining
-        is_doctor = hasattr(request.user, "doctor_profile")
-        token = consultation.doctor_token if is_doctor else consultation.patient_token
+        except Exception as e:
+            return CustomResponse(False, str(e), 400)
 
         return CustomResponse(
             True,
             "Joining consultation.",
             200,
             {
-                "consultation_id": consultation.id,
-                "room_url": consultation.room_url,
-                "token": token,
-                "status": consultation.status,
+                **join_payload,
                 "doctor": DoctorProfileSerializer(consultation.doctor).data,
-                "scheduled_at": consultation.scheduled_at,
             },
         )
 
@@ -306,6 +225,7 @@ class EndConsultationView(APIView):
 
         # Delete Daily.co room
         if consultation.room_name:
+            from .services import DailyCoService
             DailyCoService.delete_room(consultation.room_name)
 
         return CustomResponse(
@@ -350,6 +270,7 @@ class CancelConsultationView(APIView):
 
         # Delete Daily.co room if exists
         if consultation.room_name:
+            from .services import DailyCoService
             DailyCoService.delete_room(consultation.room_name)
 
         return CustomResponse(True, "Consultation cancelled.", 200)
@@ -359,7 +280,7 @@ class AddConsultationNoteView(APIView):
     permission_classes = [IsAuthenticated, IsConsultationDoctor]
 
     @extend_schema(
-        request=AddConsultationNoteSerializer,
+        request=NotesSerializer,
         responses={200: OpenApiResponse(description="Consultation notes saved successfully.")},
         description="Doctor adds notes after consultation ends.",
         tags=["Consultation"],
@@ -371,21 +292,18 @@ class AddConsultationNoteView(APIView):
 
         self.check_object_permissions(request, consultation)
 
-        if consultation.status != ConsultationStatus.COMPLETED:
-            return CustomResponse(
-                False,
-                "Notes can only be added to completed consultations.",
-                400,
-            )
-
-        serializer = AddConsultationNoteSerializer(data=request.data)
+        serializer = NotesSerializer(data=request.data)
         if not serializer.is_valid():
             return CustomResponse(False, "Validation error", 400, serializer.errors)
 
-        note, created = ConsultationNote.objects.update_or_create(
-            consultation=consultation,
-            defaults=serializer.validated_data,
-        )
+        try:
+            consultation, note = ConsultationService.add_notes(
+                consultation_id=pk,
+                doctor=request.user,
+                data=serializer.validated_data,
+            )
+        except Exception as e:
+            return CustomResponse(False, str(e), 400)
 
         return CustomResponse(
             True,

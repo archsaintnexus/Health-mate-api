@@ -1,6 +1,8 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from .models import Consultation, ConsultationNote, DoctorProfile, ConsultationStatus
+from django.utils import timezone
+from datetime import timedelta
 
 
 class DoctorProfileSerializer(serializers.ModelSerializer):
@@ -37,6 +39,7 @@ class ConsultationNoteSerializer(serializers.ModelSerializer):
             "prescription",
             "follow_up_required",
             "follow_up_date",
+            "is_reviewed",
             "created_at",
             "updated_at",
         ]
@@ -88,6 +91,41 @@ class ConsultationSerializer(serializers.ModelSerializer):
         return obj.can_join
 
 
+class ConsultationListSerializer(serializers.ModelSerializer):
+    doctor_name = serializers.CharField(source="doctor.user.full_name", read_only=True)
+    doctor_specialty = serializers.CharField(source="doctor.specialty", read_only=True)
+    is_upcoming = serializers.SerializerMethodField()
+    can_join = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Consultation
+        fields = [
+            "id",
+            "doctor_name",
+            "doctor_specialty",
+            "status",
+            "consultation_type",
+            "scheduled_at",
+            "duration_minutes",
+            "is_upcoming",
+            "can_join",
+        ]
+
+    @extend_schema_field(serializers.BooleanField)
+    def get_is_upcoming(self, obj) -> bool:
+        return obj.scheduled_at > timezone.now()
+
+    @extend_schema_field(serializers.BooleanField)
+    def get_can_join(self, obj) -> bool:
+        now = timezone.now()
+        window_start = obj.scheduled_at - timedelta(minutes=15)
+        window_end = obj.scheduled_at + timedelta(minutes=60)
+        return (
+            window_start <= now <= window_end
+            and obj.status not in [ConsultationStatus.COMPLETED, ConsultationStatus.CANCELLED]
+        )
+
+
 class CreateConsultationSerializer(serializers.Serializer):
     doctor_id = serializers.IntegerField()
     consultation_type = serializers.ChoiceField(
@@ -121,10 +159,13 @@ class JoinConsultationSerializer(serializers.Serializer):
     status = serializers.CharField()
 
 
-class AddConsultationNoteSerializer(serializers.Serializer):
-    doctor_notes = serializers.CharField(required=False, allow_blank=True)
-    diagnosis = serializers.CharField(required=False, allow_blank=True)
+class NotesSerializer(serializers.Serializer):
+    doctor_notes = serializers.CharField()
+    diagnosis = serializers.CharField()
     prescription = serializers.CharField(required=False, allow_blank=True)
     follow_up_required = serializers.BooleanField(default=False)
     follow_up_date = serializers.DateField(required=False, allow_null=True)
+
+
+AddConsultationNoteSerializer = NotesSerializer
     

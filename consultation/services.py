@@ -1,6 +1,10 @@
 import requests
 import uuid
+from datetime import timedelta
+
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 
 class DailyCoService:
@@ -140,4 +144,80 @@ class DailyCoService:
             "patient_token": patient_token,
             "doctor_token": doctor_token,
         }
+
+
+class ConsultationService:
+    """Business logic helpers for consultations."""
+
+    @staticmethod
+    def join_consultation(consultation, user) -> dict:
+        now = timezone.now()
+        window_start = consultation.scheduled_at - timedelta(minutes=15)
+        window_end = consultation.scheduled_at + timedelta(minutes=60)
+
+        if not (window_start <= now <= window_end):
+            raise ValidationError(
+                "Cannot join at this time. "
+                "You can join within 15 minutes of your scheduled time."
+            )
+
+        if consultation.status in ["completed", "cancelled", "missed"]:
+            raise ValidationError("This consultation cannot be joined.")
+
+        if not consultation.room_url:
+            room_data = DailyCoService.setup_consultation_room(consultation)
+            consultation.room_name = room_data["room_name"]
+            consultation.room_url = room_data["room_url"]
+            consultation.patient_token = room_data["patient_token"]
+            consultation.doctor_token = room_data["doctor_token"]
+            consultation.status = "connecting"
+            consultation.save(update_fields=[
+                "room_name",
+                "room_url",
+                "patient_token",
+                "doctor_token",
+                "status",
+                "updated_at",
+            ])
+
+        is_doctor = hasattr(user, "doctor_profile")
+        token = consultation.doctor_token if is_doctor else consultation.patient_token
+
+        return {
+            "consultation_id": consultation.id,
+            "room_url": consultation.room_url,
+            "token": token,
+            "status": consultation.status,
+            "scheduled_at": consultation.scheduled_at,
+        }
+
+    @staticmethod
+    def add_notes(consultation_id: int, doctor, data: dict):
+        from consultation.models import Consultation, ConsultationNote, ConsultationStatus
+        from medicals.models import MedicalRecord
+
+        try:
+            consultation = Consultation.objects.get(
+                id=consultation_id,
+                doctor__user=doctor,
+                status=ConsultationStatus.COMPLETED,
+            )
+        except Consultation.DoesNotExist:
+            raise ValidationError("Consultation not found or not yet completed.")
+
+        note, _ = ConsultationNote.objects.update_or_create(
+            consultation=consultation,
+            defaults={
+                "doctor_notes": data.get("doctor_notes", ""),
+                "diagnosis": data.get("diagnosis", ""),
+                "prescription": data.get("prescription", ""),
+                "follow_up_required": data.get("follow_up_required", False),
+                "follow_up_date": data.get("follow_up_date"),
+                "is_reviewed": True,
+            },
+        )
+        if any(field.name == "status" for field in MedicalRecord._meta.fields):
+            MedicalRecord.objects.filter(consultation_id=consultation.id).update(status="available")
+
+        return consultation, note
     
