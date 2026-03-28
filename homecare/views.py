@@ -27,6 +27,7 @@ from .serializers import (
 )
 
 
+@extend_schema(tags=["Home Care"])
 class HomeCareServiceListView(generics.ListAPIView):
     serializer_class = HomeCareServiceSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -43,6 +44,7 @@ class HomeCareServiceListView(generics.ListAPIView):
         return queryset
 
 
+@extend_schema(tags=["Home Care"])
 class HomeCareServiceDetailView(generics.RetrieveAPIView):
     queryset = HomeCareService.objects.filter(is_active=True)
     serializer_class = HomeCareServiceSerializer
@@ -51,6 +53,7 @@ class HomeCareServiceDetailView(generics.RetrieveAPIView):
 
 
 
+@extend_schema(tags=["Home Care"])
 class HomeCareTimeSlotListView(generics.ListAPIView):
     serializer_class = HomeCareTimeSlotSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -70,6 +73,7 @@ class HomeCareTimeSlotListView(generics.ListAPIView):
 
 
 
+@extend_schema(tags=["Home Care"])
 class AvailableHomeCareTimeSlotView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -136,6 +140,7 @@ class AvailableHomeCareTimeSlotView(APIView):
             request=CreateHomeCareRequestSerializer,
             responses=HomeCareRequestSerializer
     ))
+@extend_schema(tags=["Home Care"])
 class HomeCareRequestCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -153,21 +158,31 @@ class HomeCareRequestCreateView(APIView):
         )
 
 
+@extend_schema(tags=["Home Care"])
 class MyHomeCareRequestListView(generics.ListAPIView):
     serializer_class = HomeCareRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return HomeCareRequest.objects.none()
+        if not self.request.user.is_authenticated:
+            return HomeCareRequest.objects.none()
         return HomeCareRequest.objects.select_related("service", "time_slot").filter(
             user=self.request.user
         )
 
 
+@extend_schema(tags=["Home Care"])
 class MyHomeCareRequestDetailView(generics.RetrieveAPIView):
     serializer_class = HomeCareRequestSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return HomeCareRequest.objects.none()
+        if not self.request.user.is_authenticated:
+            return HomeCareRequest.objects.none()
         if self.request.user.is_staff:
             return HomeCareRequest.objects.select_related("service", "time_slot", "user").all()
         return HomeCareRequest.objects.select_related("service", "time_slot").filter(
@@ -175,6 +190,7 @@ class MyHomeCareRequestDetailView(generics.RetrieveAPIView):
         )
 
 
+@extend_schema(tags=["Home Care"])
 class CancelHomeCareRequestView(generics.GenericAPIView):
     serializer_class = HomeCareRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -205,14 +221,20 @@ class CancelHomeCareRequestView(generics.GenericAPIView):
         return Response(HomeCareRequestSerializer(homecare_request).data)
 
 
+@extend_schema(tags=["Home Care"])
 class HomeCareNotificationListView(generics.ListAPIView):
     serializer_class = HomeCareNotificationSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return HomeCareNotification.objects.none()
+        if not self.request.user.is_authenticated:
+            return HomeCareNotification.objects.none()
         return HomeCareNotification.objects.filter(user=self.request.user)
 
 
+@extend_schema(tags=["Home Care"])
 class AdminHomeCareRequestViewSet(mixins.RetrieveModelMixin,
                                   mixins.ListModelMixin,
                                     viewsets.GenericViewSet):

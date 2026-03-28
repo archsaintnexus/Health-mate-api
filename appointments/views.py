@@ -20,6 +20,7 @@ from .services import AppointmentService
 
 # ── Doctor Views ─────────────────────────────────────────────────────────────
 
+@extend_schema(tags=["Appointments"])
 class DoctorListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -60,6 +61,7 @@ class DoctorListView(APIView):
         )
 
 
+@extend_schema(tags=["Appointments"])
 class DoctorDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -86,6 +88,7 @@ class DoctorDetailView(APIView):
         )
 
 
+@extend_schema(tags=["Appointments"])
 class DoctorAvailabilityView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -131,6 +134,7 @@ class DoctorAvailabilityView(APIView):
 
 # ── Appointment Views ────────────────────────────────────────────────────────
 
+@extend_schema(tags=["Appointments"])
 class AppointmentListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -166,6 +170,7 @@ class AppointmentListView(APIView):
         )
 
 
+@extend_schema(tags=["Appointments"])
 class BookAppointmentView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -208,6 +213,7 @@ class BookAppointmentView(APIView):
         )
 
 
+@extend_schema(tags=["Appointments"])
 class AppointmentDetailView(APIView):
     permission_classes = [IsAuthenticated, IsAppointmentParticipant]
 
@@ -235,6 +241,7 @@ class AppointmentDetailView(APIView):
         )
 
 
+@extend_schema(tags=["Appointments"])
 class CancelAppointmentView(APIView):
     permission_classes = [IsAuthenticated, IsAppointmentParticipant]
 
@@ -281,6 +288,7 @@ class CancelAppointmentView(APIView):
         )
 
 
+@extend_schema(tags=["Appointments"])
 class RescheduleAppointmentView(APIView):
     permission_classes = [IsAuthenticated, IsAppointmentParticipant]
 

@@ -29,6 +29,7 @@ from .services import ConsultationService
 
 # ── Consultation Views ───────────────────────────────────────────────────────
 
+@extend_schema(tags=["Consultation"])
 class ConsultationListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -95,6 +96,7 @@ class ConsultationListView(APIView):
         )
 
 
+@extend_schema(tags=["Consultation"])
 class ConsultationDetailView(APIView):
     permission_classes = [IsAuthenticated, IsConsultationParticipant]
 
@@ -122,6 +124,7 @@ class ConsultationDetailView(APIView):
         )
 
 
+@extend_schema(tags=["Consultation"])
 class JoinConsultationView(APIView):
     permission_classes = [IsAuthenticated, IsConsultationParticipant]
 
@@ -164,6 +167,7 @@ class JoinConsultationView(APIView):
         )
 
 
+@extend_schema(tags=["Consultation"])
 class StartConsultationView(APIView):
     permission_classes = [IsAuthenticated, IsConsultationParticipant]
 
@@ -187,6 +191,7 @@ class StartConsultationView(APIView):
         return CustomResponse(True, "Consultation started.", 200)
 
 
+@extend_schema(tags=["Consultation"])
 class EndConsultationView(APIView):
     permission_classes = [IsAuthenticated, IsConsultationParticipant]
 
@@ -239,6 +244,7 @@ class EndConsultationView(APIView):
         )
 
 
+@extend_schema(tags=["Consultation"])
 class CancelConsultationView(APIView):
     permission_classes = [IsAuthenticated, IsConsultationParticipant]
 
@@ -276,6 +282,7 @@ class CancelConsultationView(APIView):
         return CustomResponse(True, "Consultation cancelled.", 200)
 
 
+@extend_schema(tags=["Consultation"])
 class AddConsultationNoteView(APIView):
     permission_classes = [IsAuthenticated, IsConsultationDoctor]
 

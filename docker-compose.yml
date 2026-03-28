@@ -1,21 +1,22 @@
-version: '3.8'
 services:
+
   db:
     image: postgres:15-alpine
     env_file: .env
     environment:
-      POSTGRES_DB: ${DB_NAME:-health_mate}
-      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_DB:       ${DB_NAME:-health_mate}
+      POSTGRES_USER:     ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test:     ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout:  5s
+      retries:  5
+
   redis:
     image: redis:7-alpine
     ports:
@@ -23,11 +24,12 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test:     ["CMD", "redis-cli", "ping"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout:  5s
+      retries:  5
     command: redis-server --appendonly yes
+
   web:
     build: .
     working_dir: /app
@@ -38,10 +40,11 @@ services:
       - "8000:8000"
     env_file: .env
     environment:
-      DEBUG: "True"
-      CELERY_BROKER_URL: redis://redis:6379/0
+      DEBUG:                 "True"
+      CELERY_BROKER_URL:     redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-health_mate}
+      DATABASE_URL:          postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-health_mate}
+      DB_SSL_REQUIRE:        "false"
     volumes:
       - .:/app
     depends_on:
@@ -49,43 +52,58 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
   celery:
     build: .
     working_dir: /app
     command: >
-      sh -c "python manage.py migrate &&
-             celery -A core worker --loglevel=info --concurrency=4"
+      celery -A core worker
+      --loglevel=info
+      --concurrency=4
+      --uid=nobody
+      --gid=nogroup
     env_file: .env
     environment:
-      DEBUG: "False"
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-health_mate}
-      RESEND_API_KEY: ${RESEND_API_KEY}
+      DEBUG:                     "False"
+      CELERY_BROKER_URL:         redis://redis:6379/0
+      CELERY_RESULT_BACKEND:     redis://redis:6379/0
+      DATABASE_URL:              postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-health_mate}
+      DB_SSL_REQUIRE:            "false"
+      RESEND_API_KEY:            ${RESEND_API_KEY}
       FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-/app/firebase-credentials.json}
     volumes:
       - .:/app
     depends_on:
-      - redis
-      - web
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   celery-beat:
     build: .
     working_dir: /app
     command: >
-      sh -c "python manage.py migrate &&
-             celery -A core beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+      celery -A core beat
+      --loglevel=info
+      --scheduler django_celery_beat.schedulers:DatabaseScheduler
+      --uid=nobody
+      --gid=nogroup
     env_file: .env
     environment:
-      DEBUG: "False"
-      CELERY_BROKER_URL: redis://redis:6379/0
+      DEBUG:                 "False"
+      CELERY_BROKER_URL:     redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-health_mate}
+      DATABASE_URL:          postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-health_mate}
+      DB_SSL_REQUIRE:        "false"
     volumes:
       - .:/app
     depends_on:
-      - redis
-      - web
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:
   redis_data:
+  

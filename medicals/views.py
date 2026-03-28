@@ -24,6 +24,7 @@ from .services import MedicalRecordService
 
 # ── Medical Record Views ──────────────────────────────────────────────────────
 
+@extend_schema(tags=["Medical Records"])
 class MedicalRecordListView(APIView):
     permission_classes = [IsAuthenticated, IsPatientOrDoctor]
 
@@ -119,6 +120,7 @@ class MedicalRecordListView(APIView):
         )
 
 
+@extend_schema(tags=["Medical Records"])
 class MedicalRecordDetailView(APIView):
     permission_classes = [IsAuthenticated, IsMedicalRecordOwner]
 
@@ -153,6 +155,7 @@ class MedicalRecordDetailView(APIView):
         )
 
 
+@extend_schema(tags=["Medical Records"])
 class SendPrescriptionToPharmacyView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -208,6 +211,7 @@ class SendPrescriptionToPharmacyView(APIView):
 
 # ── Lab Test Views ────────────────────────────────────────────────────────────
 
+@extend_schema(tags=["Lab Tests"])
 class LabTestListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -280,6 +284,7 @@ class LabTestListView(APIView):
         )
 
 
+@extend_schema(tags=["Lab Tests"])
 class LabTestDetailView(APIView):
     permission_classes = [IsAuthenticated, IsLabTestOwner]
 

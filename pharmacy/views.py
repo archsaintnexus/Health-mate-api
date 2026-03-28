@@ -48,6 +48,7 @@ from .paystack import PaystackAPIError, initialize_transaction, verify_transacti
 
 
 ## Create CRUD for catagories
+@extend_schema(tags=["Pharmacy"])
 class PharmacyCategoryCreateListView(ListCreateAPIView):
     queryset = PharmacyCategory.objects.all()
     serializer_class = PharmacyCategorySerializer
@@ -58,6 +59,7 @@ class PharmacyCategoryCreateListView(ListCreateAPIView):
         return []
 
 
+@extend_schema(tags=["Pharmacy"])
 class PharmacyCategoryDetailView(RetrieveUpdateDestroyAPIView):
     queryset = PharmacyCategory.objects.all()
     serializer_class = PharmacyCategorySerializer
@@ -66,12 +68,14 @@ class PharmacyCategoryDetailView(RetrieveUpdateDestroyAPIView):
 
 ## Create CRUD for  products
 
+@extend_schema(tags=["Pharmacy"])
 class PharmacyProductListCreateView(ListCreateAPIView):
     queryset = PharmacyProduct.objects.all()
     serializer_class = PharmacyProductSerializer
     permission_classes = [permissions.IsAdminUser]
 
 
+@extend_schema(tags=["Pharmacy"])
 class PharmacyProductDetailView(RetrieveUpdateDestroyAPIView):
     queryset = PharmacyProduct.objects.all()
     serializer_class = PharmacyProductSerializer
@@ -79,6 +83,7 @@ class PharmacyProductDetailView(RetrieveUpdateDestroyAPIView):
 
 
 # Pharmacy catalog
+@extend_schema(tags=["Pharmacy"])
 class PharmacyCatalogView(ListAPIView):
     queryset = PharmacyProduct.objects.filter(is_active=True)
     serializer_class = PharmacyProductSerializer
@@ -87,6 +92,7 @@ class PharmacyCatalogView(ListAPIView):
 
 # Order creation
 
+@extend_schema(tags=["Pharmacy"])
 class CartView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -105,6 +111,7 @@ class CartView(APIView):
         responses=CartSerializer
     )
 )
+@extend_schema(tags=["Pharmacy"])
 class AddToCartView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -122,6 +129,7 @@ class AddToCartView(APIView):
     ),
     delete=extend_schema(responses=CartSerializer),
 )
+@extend_schema(tags=["Pharmacy"])
 class CartItemUpdateDeleteView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -143,6 +151,7 @@ class CartItemUpdateDeleteView(APIView):
                         request=CheckoutSerializer,
                         responses=PharmacyOrderSerializer
                     ))
+@extend_schema(tags=["Pharmacy"])
 class CheckoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -156,16 +165,22 @@ class CheckoutView(APIView):
 
 
 # Order  tracking
+@extend_schema(tags=["Pharmacy"])
 class MyOrderListView(generics.ListAPIView):
     serializer_class = PharmacyOrderSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return PharmacyOrder.objects.none()
+        if not self.request.user.is_authenticated:
+            return PharmacyOrder.objects.none()
         return PharmacyOrder.objects.prefetch_related("items__product", "tracking_events").filter(
             user=self.request.user
         )
 
 
+@extend_schema(tags=["Pharmacy"])
 class MyOrderDetailView(generics.RetrieveAPIView):
     serializer_class = PharmacyOrderSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
@@ -178,6 +193,7 @@ class MyOrderDetailView(generics.RetrieveAPIView):
         )
 
 
+@extend_schema(tags=["Pharmacy"])
 class OrderTrackingView(generics.RetrieveAPIView):
     serializer_class = PharmacyOrderSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
@@ -191,6 +207,7 @@ class OrderTrackingView(generics.RetrieveAPIView):
 
 
 
+@extend_schema(tags=["Pharmacy"])
 class AdminOrderViewSet(mixins.RetrieveModelMixin,
                                   mixins.ListModelMixin,
                                     viewsets.GenericViewSet):
@@ -220,6 +237,7 @@ class AdminOrderViewSet(mixins.RetrieveModelMixin,
         responses={200: PharmacyOrderSerializer},
     )
 )
+@extend_schema(tags=["Pharmacy"])
 class InitializePaystackPaymentView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -267,6 +285,7 @@ class InitializePaystackPaymentView(APIView):
         )
 
 
+@extend_schema(tags=["Pharmacy"])
 class VerifyPaystackPaymentView(APIView):
     '''
     To verify/confirm payment manually or incase callback fails
@@ -340,6 +359,7 @@ class VerifyPaystackPaymentView(APIView):
         )
 
 
+@extend_schema(tags=["Pharmacy"])
 class PaystackCallbackView(APIView):
     permission_classes = []
 
@@ -404,10 +424,15 @@ class PaystackCallbackView(APIView):
 
     
 
+@extend_schema(tags=["Pharmacy"])
 class PharmacyNotificationListView(generics.ListAPIView):
     serializer_class = PharmacyNotificationSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return PharmacyNotification.objects.none()
+        if not self.request.user.is_authenticated:
+            return PharmacyNotification.objects.none()
         return PharmacyNotification.objects.filter(user=self.request.user)
     

@@ -545,9 +545,9 @@ docker-compose exec web python manage.py shell
 In addition to authentication, this backend currently includes:
 
 - **Appointments** endpoints under `/appointments/`
+- **Pharmacy** endpoints under `/api/pharmacy/`
 - **Consultation** endpoints under `/consultations/`
 - **Medicals** endpoints under `/medicals/`
-- **Pharmacy** endpoints under `/api/pharmacy/`
 - **Homecare** endpoints under `/api/homecare/`
 
 Swagger docs: `http://localhost:8000/api/docs/`

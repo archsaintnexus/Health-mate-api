@@ -50,6 +50,7 @@ def _build_otp_email(display_name: str, code: str, reason: str):
     </html>
     """
 
+@extend_schema(tags=["Authentication"])
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
@@ -127,6 +128,7 @@ class RegisterView(APIView):
         )
 
 
+@extend_schema(tags=["Authentication"])
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
@@ -182,6 +184,7 @@ class LoginView(APIView):
         )
 
 
+@extend_schema(tags=["Authentication"])
 class VerifyOtpView(APIView):
     permission_classes = [AllowAny]
 
@@ -228,6 +231,7 @@ class VerifyOtpView(APIView):
         return CustomResponse(True, message, 200)
 
 
+@extend_schema(tags=["Authentication"])
 class ResendOtpView(APIView):
     permission_classes = [AllowAny]
 
@@ -281,6 +285,7 @@ class ResendOtpView(APIView):
         return CustomResponse(True, "OTP sent successfully.", 200)
 
 
+@extend_schema(tags=["Authentication"])
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
 
@@ -365,6 +370,7 @@ class ResetPasswordView(APIView):
         )
 
 
+@extend_schema(tags=["Authentication"])
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -374,7 +380,7 @@ class UserProfileView(APIView):
             404: OpenApiResponse(description="User not found"),
         },
         description="Get the complete profile of the currently authenticated user including medical info and emergency contact.",
-        tags=["Profile"],
+        tags=["Authentication"],
     )
     def get(self, request):
         user = request.user
@@ -387,6 +393,7 @@ class UserProfileView(APIView):
         )
 
 
+@extend_schema(tags=["Authentication"])
 class PersonalInformationView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -397,7 +404,7 @@ class PersonalInformationView(APIView):
             400: OpenApiResponse(description="Validation error"),
         },
         description="Update personal information — Desktop 8 in Figma. Requires JWT authentication.",
-        tags=["Profile"],
+        tags=["Authentication"],
     )
     def patch(self, request):
         user = request.user
@@ -419,6 +426,7 @@ class PersonalInformationView(APIView):
         )
 
 
+@extend_schema(tags=["Authentication"])
 class MedicalInformationView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -429,7 +437,7 @@ class MedicalInformationView(APIView):
             400: OpenApiResponse(description="Validation error"),
         },
         description="Create or update medical information — Desktop 9 in Figma. Requires JWT authentication.",
-        tags=["Profile"],
+        tags=["Authentication"],
     )
     def post(self, request):
         user = request.user
@@ -449,6 +457,7 @@ class MedicalInformationView(APIView):
         return CustomResponse(True, message, 200, serializer.data)
 
 
+@extend_schema(tags=["Authentication"])
 class EmergencyContactView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -459,7 +468,7 @@ class EmergencyContactView(APIView):
             400: OpenApiResponse(description="Validation error"),
         },
         description="Create or update emergency contact — Desktop 10 in Figma. Requires JWT authentication.",
-        tags=["Profile"],
+        tags=["Authentication"],
     )
     def post(self, request):
         user = request.user

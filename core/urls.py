@@ -20,8 +20,8 @@ urlpatterns = [
     path("appointments/", include("appointments.urls", namespace="appointments")),
     path("consultations/", include("consultation.urls", namespace="consultation")),
     path("medicals/", include("medicals.urls", namespace="medicals")),
-    path("api/pharmacy/", include('pharmacy.urls', namespace='pharmacy')),
-    path("api/homecare/", include("homecare.urls")),
+    path("pharmacy/", include('pharmacy.urls', namespace='pharmacy')),
+    path("homecare/", include("homecare.urls")),
     
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
