@@ -20,8 +20,9 @@ RUN pip install --no-cache-dir \
     -r requirements.txt
 
 COPY . .
-RUN chmod +x scripts/start.sh scripts/dev_start.sh
+
+RUN chmod +x Scripts/start.sh Scripts/dev_start.sh
 
 EXPOSE 8000
-CMD ["./scripts/start.sh"]
 
+CMD ["./Scripts/start.sh"]
