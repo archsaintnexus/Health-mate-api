@@ -1,5 +1,8 @@
 import os
 import logging
+import base64
+import json
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -10,11 +13,36 @@ def _init_firebase():
     from firebase_admin import credentials
 
     if not firebase_admin._apps:
+
+        # ✅ Production (Render) — read from base64 env var
+        b64 = os.getenv("FIREBASE_CREDENTIALS_BASE64")
+        if b64:
+            try:
+                decoded = base64.b64decode(b64).decode("utf-8")
+                json.loads(decoded)  # validate JSON
+                tmp = tempfile.NamedTemporaryFile(
+                    mode="w",
+                    suffix=".json",
+                    delete=False,
+                    prefix="firebase_",
+                )
+                tmp.write(decoded)
+                tmp.close()
+                cred = credentials.Certificate(tmp.name)
+                firebase_admin.initialize_app(cred)
+                logger.info("Firebase initialized from FIREBASE_CREDENTIALS_BASE64")
+                return
+            except Exception as e:
+                logger.error("Failed to init Firebase from base64: %s", e)
+                raise RuntimeError(f"Firebase base64 init failed: {e}")
+
+        # ✅ Local development — read from file path
         candidate_paths = [
             os.getenv("FIREBASE_CREDENTIALS_PATH", ""),
             "./firebase-credentials.json",
             "./firebase-key.json",
         ]
+
         for cred_path in candidate_paths:
             print(f"TRYING PATH: {cred_path} | EXISTS: {os.path.exists(cred_path) if cred_path else False}")
             logger.debug(f"Trying Firebase credentials path: {cred_path}")
@@ -32,31 +60,17 @@ def _init_firebase():
 
         raise RuntimeError(
             "Firebase credentials not found. "
-            "Set FIREBASE_CREDENTIALS_PATH to a valid JSON key file path."
+            "Set FIREBASE_CREDENTIALS_BASE64 on Render or "
+            "FIREBASE_CREDENTIALS_PATH locally."
         )
     else:
         print("FIREBASE ALREADY INITIALIZED")
+        logger.debug("Firebase already initialized")
 
 
 def verify_id_token(token: str) -> dict:
-    """Return decoded claims for a Firebase ID token.
+    """Return decoded claims for a Firebase ID token."""
 
-    The Firebase SDK expects a *string* token.  During normal operation
-    we receive this value from the client, but there have been intermittent
-    production crashes where the value coming out of the REST framework
-    serializer was not a string at all (e.g. a ``slice`` object).  When the
-    underlying ``firebase_admin`` library receives anything other than a
-    string it ends up attempting to use the value as a dictionary key which
-    raises ``TypeError: unhashable type: 'slice'``.  That error bubbled up to
-    our logs and resulted in a confusing ``400`` response.
-
-    To avoid the problem we validate the argument type early and log
-greater detail so developers can diagnose client errors.
-    """
-
-    # make sure the value is something sane before passing it to the
-    # third‑party SDK; the earlier we catch bad input the easier it is to
-    # trace back to the caller.
     if not isinstance(token, str):
         logger.error(
             "Expected Firebase token to be a string, got %r (type %s)",
@@ -70,8 +84,6 @@ greater detail so developers can diagnose client errors.
 
         _init_firebase()
 
-        # show a short preview of the token so we can correlate logs without
-        # dumping the entire JWT (it can be quite long).
         logger.debug("Verifying Firebase ID token: %.30s", token)
 
         decoded = firebase_auth.verify_id_token(token)
@@ -80,22 +92,18 @@ greater detail so developers can diagnose client errors.
         return decoded
 
     except Exception as err:
-        # we still log the raw exception so it appears in container logs,
-        # but surface a generic error to callers to avoid leaking internal
-        # details.
         logger.error("Firebase token verification failed: %s", err)
         raise ValueError(f"Invalid Firebase token: {err}")
-    
 
 
 def update_user_password(uid: str, new_password: str) -> None:
     """
     Update a Firebase user's password.
-    
+
     Args:
         uid: Firebase user UID
         new_password: New password to set
-        
+
     Raises:
         ValueError: If update fails
     """
@@ -117,10 +125,10 @@ def update_user_password(uid: str, new_password: str) -> None:
 def delete_firebase_user(uid: str) -> None:
     """
     Delete a Firebase user account.
-    
+
     Args:
         uid: Firebase user UID
-        
+
     Raises:
         ValueError: If deletion fails
     """
@@ -142,13 +150,13 @@ def delete_firebase_user(uid: str) -> None:
 def get_firebase_user(uid: str) -> dict:
     """
     Get Firebase user record by UID.
-    
+
     Args:
         uid: Firebase user UID
-        
+
     Returns:
         Firebase user record
-        
+
     Raises:
         ValueError: If user not found
     """
