@@ -210,7 +210,9 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE          = "Africa/Lagos"
 CELERY_BEAT_SCHEDULER    = "django_celery_beat.schedulers:DatabaseScheduler"
 
-# ✅ Fix for Upstash rediss:// SSL requirement
+CELERY_TASK_ALWAYS_EAGER     = True
+CELERY_TASK_EAGER_PROPAGATES = True
+
 if CELERY_BROKER_URL.startswith("rediss://"):
     CELERY_BROKER_USE_SSL = {
         "ssl_cert_reqs": "CERT_NONE"
