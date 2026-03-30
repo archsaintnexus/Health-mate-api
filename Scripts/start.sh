@@ -1,9 +1,7 @@
 #!/bin/sh
 set -e
 
-# ── Wait for database (local Docker only) ────────────────────
-# On Render/Production, DATABASE_URL points to Supabase
-# which is always available — no need to wait
+# ── Skip DB wait on Render (Supabase is always available) ────
 if [ -z "$DATABASE_URL" ]; then
     DB_HOST="${DB_HOST:-db}"
     DB_PORT="${DB_PORT:-5432}"
@@ -25,16 +23,11 @@ echo "==> Running migrations..."
 python manage.py migrate --noinput
 
 # ── Start Gunicorn ────────────────────────────────────────────
-APP_MODULE="${GUNICORN_APP_MODULE:-core.wsgi:application}"
-BIND_ADDR="0.0.0.0:${PORT:-8000}"
-WORKERS="${GUNICORN_WORKERS:-2}"
-TIMEOUT="${GUNICORN_TIMEOUT:-120}"
-
-echo "==> Starting Gunicorn on ${BIND_ADDR} (${WORKERS} workers)..."
-exec gunicorn "$APP_MODULE" \
-    --bind     "$BIND_ADDR" \
-    --workers  "$WORKERS" \
-    --timeout  "$TIMEOUT" \
+echo "==> Starting Gunicorn on port ${PORT}..."
+exec gunicorn core.wsgi:application \
+    --bind     "0.0.0.0:${PORT}" \
+    --workers  2 \
+    --timeout  120 \
     --access-logfile - \
     --error-logfile  -
     
