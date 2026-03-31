@@ -5,7 +5,9 @@ from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
+from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from rest_framework_simplejwt.tokens import RefreshToken
+from drf_spectacular.utils import extend_schema_view
 
 from helper.response import CustomResponse
 from helper.tasks import send_a_mail
@@ -68,6 +70,26 @@ def _build_otp_email(display_name: str, code: str, reason: str):
       </body>
     </html>
     """
+
+
+@extend_schema_view(
+    post=extend_schema(
+        tags=["Authentication"],
+        description="Refresh JWT access token using a valid refresh token.",
+    )
+)
+class AuthTokenRefreshView(TokenRefreshView):
+    permission_classes = [AllowAny]
+
+
+@extend_schema_view(
+    post=extend_schema(
+        tags=["Authentication"],
+        description="Verify whether a JWT token is valid.",
+    )
+)
+class AuthTokenVerifyView(TokenVerifyView):
+    permission_classes = [AllowAny]
 
 @extend_schema(tags=["Authentication"])
 class RegisterView(APIView):
