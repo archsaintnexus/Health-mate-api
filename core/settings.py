@@ -129,10 +129,6 @@ TEMPLATES = [
 ]
 
 
-# ─────────────────────────────────────────────────────────────
-# DATABASE — Supabase (Production) / Docker (Local)
-# ─────────────────────────────────────────────────────────────
-
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
@@ -175,10 +171,6 @@ else:
     }
 
 
-# ─────────────────────────────────────────────────────────────
-# CACHE — Upstash Redis (Production) / Local Redis (Docker)
-# ─────────────────────────────────────────────────────────────
-
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/1")
 
 CACHES = {
@@ -188,9 +180,9 @@ CACHES = {
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "CONNECTION_POOL_KWARGS": {
-                "ssl_cert_reqs": None,   # ✅ Upstash TLS fix
+                "ssl_cert_reqs": None, 
             },
-            "IGNORE_EXCEPTIONS": True,   # ✅ won't crash if Redis is down
+            "IGNORE_EXCEPTIONS": True, 
         },
     }
 }
@@ -224,10 +216,6 @@ if CELERY_RESULT_BACKEND.startswith("rediss://"):
     }
 
 
-# ─────────────────────────────────────────────────────────────
-# AUTH + PASSWORD VALIDATORS
-# ─────────────────────────────────────────────────────────────
-
 AUTH_USER_MODEL = "accounts.CompanyUser"
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -238,9 +226,6 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# ─────────────────────────────────────────────────────────────
-# JWT
-# ─────────────────────────────────────────────────────────────
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME":  timedelta(
@@ -260,10 +245,6 @@ SIMPLE_JWT = {
     "JTI_CLAIM":                "jti",
 }
 
-
-# ─────────────────────────────────────────────────────────────
-# DRF
-# ─────────────────────────────────────────────────────────────
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -291,9 +272,6 @@ REST_FRAMEWORK = {
 }
 
 
-# ─────────────────────────────────────────────────────────────
-# SPECTACULAR (Swagger)
-# ─────────────────────────────────────────────────────────────
 
 SPECTACULAR_SETTINGS = {
     "TITLE":       "Health Mate API",
@@ -369,9 +347,6 @@ SPECTACULAR_SETTINGS = {
 }
 
 
-# ─────────────────────────────────────────────────────────────
-# CLOUDINARY
-# ─────────────────────────────────────────────────────────────
 
 CLOUDINARY_STORAGE = {
     "CLOUD_NAME": os.environ.get("CLOUDINARY_CLOUD_NAME", ""),
@@ -382,9 +357,6 @@ CLOUDINARY_STORAGE = {
 DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
 
-# ─────────────────────────────────────────────────────────────
-# STATIC + MEDIA
-# ─────────────────────────────────────────────────────────────
 
 STATIC_URL  = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -393,10 +365,6 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_URL  = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-
-# ─────────────────────────────────────────────────────────────
-# CORS
-# ─────────────────────────────────────────────────────────────
 
 CORS_ALLOWED_ORIGINS = os.environ.get(
     "CORS_ALLOWED_ORIGINS",
@@ -411,43 +379,26 @@ CSRF_TRUSTED_ORIGINS = os.environ.get(
 CORS_ALLOW_CREDENTIALS = True
 
 
-# ─────────────────────────────────────────────────────────────
-# EMAIL — Resend
-# ─────────────────────────────────────────────────────────────
-
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@ordfellow.com")
 SERVER_EMAIL       = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@ordfellow.com")
 RESEND_API_KEY     = os.environ.get("RESEND_API_KEY",     "")
 RESEND_FROM_EMAIL  = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@ordfellow.com")
 
 
-# ─────────────────────────────────────────────────────────────
-# DAILY.CO — Video Consultations
-# ─────────────────────────────────────────────────────────────
-
 DAILY_API_KEY   = os.environ.get("DAILY_API_KEY",   "")
 DAILY_API_URL   = os.environ.get("DAILY_API_URL",   "https://api.daily.co/v1")
 DAILY_SUBDOMAIN = os.environ.get("DAILY_SUBDOMAIN", "")
 
 
-# ─────────────────────────────────────────────────────────────
-# PAYSTACK — Pharmacy payments
-# ─────────────────────────────────────────────────────────────
-
 PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY", "")
 PAYSTACK_PUBLIC_KEY = os.environ.get("PAYSTACK_PUBLIC_KEY", "")
 
 
-# ─────────────────────────────────────────────────────────────
-# OTP
-# ─────────────────────────────────────────────────────────────
 
 OTP_EXPIRY_SECONDS = int(os.environ.get("OTP_EXPIRY_SECONDS", 300))
 
 
-# ─────────────────────────────────────────────────────────────
-# SECURITY (Production only)
-# ─────────────────────────────────────────────────────────────
+
 
 if not DEBUG:
     SECURE_SSL_REDIRECT            = True
@@ -461,21 +412,12 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF    = True
     X_FRAME_OPTIONS                = "DENY"
 
-
-# ─────────────────────────────────────────────────────────────
-# INTERNATIONALISATION
-# ─────────────────────────────────────────────────────────────
-
 LANGUAGE_CODE      = "en-us"
 TIME_ZONE          = "Africa/Lagos"
 USE_I18N           = True
 USE_TZ             = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-
-# ─────────────────────────────────────────────────────────────
-# LOGGING
-# ─────────────────────────────────────────────────────────────
 
 LOGGING = {
     "version":                  1,

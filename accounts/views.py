@@ -366,20 +366,7 @@ class ResetPasswordView(APIView):
             404: OpenApiResponse(description="User not found"),
             502: OpenApiResponse(description="Firebase error"),
         },
-        description="""
-        Three-step password reset flow matching the UI design:
 
-        Step 1 — Request OTP (Screen 1 - Enter Email):
-        { "action": "request", "email": "user@example.com" }
-
-        Step 2 — Verify OTP (Screen 2 - Enter OTP Code):
-        { "action": "verify_otp", "email": "user@example.com", "otp_code": "123456" }
-        → Returns reset_token (valid 10 minutes)
-
-        Step 3 — Set New Password (Screen 3 - Create New Password):
-        { "action": "confirm", "email": "user@example.com", "reset_token": "xxx", "new_password": "NewPass123!" }
-        → Password Reset Successful 
-        """,
         tags=["Authentication"],
     )
     @transaction.atomic
