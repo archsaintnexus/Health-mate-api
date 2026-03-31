@@ -1,6 +1,7 @@
 import os
 
 from django.db import transaction
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
@@ -25,7 +26,25 @@ from .serializers import (
 
 
 def _otp_expiry_seconds():
-    return int(os.getenv("OTP_EXPIRY_SECONDS", "600"))
+    return int(os.getenv("OTP_EXPIRY_SECONDS", "300"))
+
+
+def _otp_resend_cooldown_seconds():
+    return int(os.getenv("OTP_RESEND_COOLDOWN_SECONDS", "300"))
+
+
+def _otp_resend_wait_seconds(user: CompanyUser, purpose: str) -> int:
+    latest_otp = (
+        OTPCode.objects.filter(user=user, purpose=purpose)
+        .order_by("-created_at")
+        .first()
+    )
+    if not latest_otp:
+        return 0
+
+    elapsed = (timezone.now() - latest_otp.created_at).total_seconds()
+    remaining = _otp_resend_cooldown_seconds() - int(elapsed)
+    return max(remaining, 0)
 
 
 def _send_email(subject: str, html_message: str, recipient: str):
@@ -263,6 +282,15 @@ class ResendOtpView(APIView):
         if purpose == OTPPurpose.PASSWORD_RESET and not user.is_active:
             return CustomResponse(False, "User account is inactive.", 400)
 
+        wait_seconds = _otp_resend_wait_seconds(user=user, purpose=purpose)
+        if wait_seconds > 0:
+            wait_minutes = (wait_seconds + 59) // 60
+            return CustomResponse(
+                False,
+                f"Please wait {wait_minutes} minute(s) before requesting another OTP.",
+                400,
+            )
+
         otp = OTPCode.create_for_user(
             user=user,
             purpose=purpose,
@@ -316,20 +344,25 @@ class ResetPasswordView(APIView):
 
         if action == "request":
             if user and user.is_active:
-                otp = OTPCode.create_for_user(
+                wait_seconds = _otp_resend_wait_seconds(
                     user=user,
                     purpose=OTPPurpose.PASSWORD_RESET,
-                    expiry_seconds=_otp_expiry_seconds(),
                 )
-                _send_email(
-                    subject="Health Mate Password Reset OTP",
-                    html_message=_build_otp_email(
-                        user.display_name,
-                        otp.code,
-                        "Use this OTP to reset your password",
-                    ),
-                    recipient=user.email,
-                )
+                if wait_seconds <= 0:
+                    otp = OTPCode.create_for_user(
+                        user=user,
+                        purpose=OTPPurpose.PASSWORD_RESET,
+                        expiry_seconds=_otp_expiry_seconds(),
+                    )
+                    _send_email(
+                        subject="Health Mate Password Reset OTP",
+                        html_message=_build_otp_email(
+                            user.display_name,
+                            otp.code,
+                            "Use this OTP to reset your password",
+                        ),
+                        recipient=user.email,
+                    )
             return CustomResponse(
                 True,
                 "If an account with this email exists, a reset OTP has been sent.",
