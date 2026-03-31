@@ -244,9 +244,9 @@ class VerifyOtpView(APIView):
         if not serializer.is_valid():
             return CustomResponse(False, "Validation error", 400, serializer.errors)
 
-        email = serializer.validated_data["email"]
-        code = serializer.validated_data["otp_code"]
-        purpose = serializer.validated_data["purpose"]
+        email    = serializer.validated_data["email"]
+        code     = serializer.validated_data["otp_code"]
+        purpose  = serializer.validated_data["purpose"]
 
         user = CompanyUser.objects.filter(email=email).first()
         if not user:
@@ -269,6 +269,25 @@ class VerifyOtpView(APIView):
             user.is_active = True
             user.save(update_fields=["is_email_verified", "is_active"])
 
+            refresh = RefreshToken.for_user(user)
+            refresh["role"]  = user.role
+            refresh["email"] = user.email
+            access = refresh.access_token
+            access["role"]   = user.role
+            access["email"]  = user.email
+
+            return CustomResponse(
+                True,
+                "Email verified successfully.",
+                200,
+                {
+                    "tokens": {
+                        "access":  str(access),
+                        "refresh": str(refresh),
+                    },
+                    "user": UserProfileSerializer(user).data,
+                },
+            )
         return CustomResponse(True, message, 200)
 
 
@@ -342,88 +361,173 @@ class ResetPasswordView(APIView):
     @extend_schema(
         request=ResetPasswordSerializer,
         responses={
-            200: OpenApiResponse(description="OTP sent or password reset successfully."),
-            400: OpenApiResponse(description="Invalid OTP or validation error"),
-            502: OpenApiResponse(description="Firebase password update failed"),
+            200: OpenApiResponse(description="Success"),
+            400: OpenApiResponse(description="Validation error"),
+            404: OpenApiResponse(description="User not found"),
+            502: OpenApiResponse(description="Firebase error"),
         },
-        description=(
-            "Two-step password reset. "
-            "Step 1: Send action='request' with email to receive OTP. "
-            "Step 2: Send action='confirm' with email, otp_code and new_password to reset."
-        ),
+        description="""
+        Three-step password reset flow matching the UI design:
+
+        Step 1 — Request OTP (Screen 1 - Enter Email):
+        { "action": "request", "email": "user@example.com" }
+
+        Step 2 — Verify OTP (Screen 2 - Enter OTP Code):
+        { "action": "verify_otp", "email": "user@example.com", "otp_code": "123456" }
+        → Returns reset_token (valid 10 minutes)
+
+        Step 3 — Set New Password (Screen 3 - Create New Password):
+        { "action": "confirm", "email": "user@example.com", "reset_token": "xxx", "new_password": "NewPass123!" }
+        → Password Reset Successful 
+        """,
         tags=["Authentication"],
     )
     @transaction.atomic
     def post(self, request):
-        serializer = ResetPasswordSerializer(data=request.data)
-        if not serializer.is_valid():
-            return CustomResponse(False, "Validation error", 400, serializer.errors)
+        import secrets
+        from django.core.cache import cache
 
-        action = serializer.validated_data["action"]
-        email = serializer.validated_data["email"]
+        action = request.data.get("action")
 
-        user = CompanyUser.objects.filter(email=email).first()
-
+        if not action:
+            return CustomResponse(False, "Action is required.", 400)
         if action == "request":
+            email = request.data.get("email")
+
+            if not email:
+                return CustomResponse(False, "Email is required.", 400)
+
+            user = CompanyUser.objects.filter(email=email).first()
+
             if user and user.is_active:
                 wait_seconds = _otp_resend_wait_seconds(
                     user=user,
                     purpose=OTPPurpose.PASSWORD_RESET,
                 )
-                if wait_seconds <= 0:
-                    otp = OTPCode.create_for_user(
-                        user=user,
-                        purpose=OTPPurpose.PASSWORD_RESET,
-                        expiry_seconds=_otp_expiry_seconds(),
+                if wait_seconds > 0:
+                    wait_minutes = (wait_seconds + 59) // 60
+                    return CustomResponse(
+                        False,
+                        f"Please wait {wait_minutes} minute(s) before requesting another OTP.",
+                        400,
                     )
-                    _send_email(
-                        subject="Health Mate Password Reset OTP",
-                        html_message=_build_otp_email(
-                            user.display_name,
-                            otp.code,
-                            "Use this OTP to reset your password",
-                        ),
-                        recipient=user.email,
-                    )
+
+                otp = OTPCode.create_for_user(
+                    user=user,
+                    purpose=OTPPurpose.PASSWORD_RESET,
+                    expiry_seconds=_otp_expiry_seconds(),
+                )
+                _send_email(
+                    subject="Health Mate Password Reset OTP",
+                    html_message=_build_otp_email(
+                        user.display_name,
+                        otp.code,
+                        "Use this OTP to reset your password",
+                    ),
+                    recipient=user.email,
+                )
             return CustomResponse(
                 True,
                 "If an account with this email exists, a reset OTP has been sent.",
                 200,
             )
 
-        if not user:
-            return CustomResponse(False, "Invalid email or OTP.", 400)
+        # ── Step 2 — Verify OTP → return reset_token ─────────
+        if action == "verify_otp":
+            email    = request.data.get("email")
+            otp_code = request.data.get("otp_code")
 
-        otp_code = serializer.validated_data["otp_code"]
-        new_password = serializer.validated_data["new_password"]
+            if not email or not otp_code:
+                return CustomResponse(
+                    False,
+                    "Email and otp_code are required.",
+                    400,
+                )
 
-        otp = (
-            OTPCode.objects.filter(user=user, purpose=OTPPurpose.PASSWORD_RESET, is_used=False)
-            .order_by("-created_at")
-            .first()
-        )
-        if not otp:
-            return CustomResponse(False, "No active reset OTP found.", 400)
+            user = CompanyUser.objects.filter(email=email).first()
+            if not user:
+                return CustomResponse(False, "User not found.", 404)
 
-        is_valid, message = otp.verify(otp_code)
-        if not is_valid:
-            return CustomResponse(False, message, 400)
+            otp = (
+                OTPCode.objects.filter(
+                    user=user,
+                    purpose=OTPPurpose.PASSWORD_RESET,
+                    is_used=False,
+                )
+                .order_by("-created_at")
+                .first()
+            )
 
-        if user.firebase_uid:
-            try:
-                update_user_password(user.firebase_uid, new_password)
-            except ValueError:
-                return CustomResponse(False, "Unable to reset password at this time.", 502)
+            if not otp:
+                return CustomResponse(
+                    False,
+                    "No active OTP found. Please request a new one.",
+                    400,
+                )
 
-        user.set_password(new_password)
-        user.save(update_fields=["password"])
+            is_valid, message = otp.verify(otp_code)
+            if not is_valid:
+                return CustomResponse(False, message, 400)
+            reset_token = secrets.token_urlsafe(32)
 
-        return CustomResponse(
-            True,
-            "Password reset successful. You can now log in with your new password.",
-            200,
-        )
+            cache.set(
+                f"password_reset_token_{email}",
+                reset_token,
+                timeout=600,
+            )
 
+            return CustomResponse(
+                True,
+                "OTP verified successfully.",
+                200,
+                {"reset_token": reset_token},
+            )
+
+        if action == "confirm":
+            email        = request.data.get("email")
+            reset_token  = request.data.get("reset_token")
+            new_password = request.data.get("new_password")
+
+            if not email or not reset_token or not new_password:
+                return CustomResponse(
+                    False,
+                    "Email, reset_token and new_password are required.",
+                    400,
+                )
+            
+            cached_token = cache.get(f"password_reset_token_{email}")
+            if not cached_token or cached_token != reset_token:
+                return CustomResponse(
+                    False,
+                    "Invalid or expired reset token. Please start over.",
+                    400,
+                )
+
+            user = CompanyUser.objects.filter(email=email).first()
+            if not user:
+                return CustomResponse(False, "User not found.", 404)
+
+            if user.firebase_uid:
+                try:
+                    update_user_password(user.firebase_uid, new_password)
+                except ValueError:
+                    return CustomResponse(
+                        False,
+                        "Unable to reset password at this time.",
+                        502,
+                    )
+            user.set_password(new_password)
+            user.save(update_fields=["password"])
+
+            cache.delete(f"password_reset_token_{email}")
+
+            return CustomResponse(
+                True,
+                "Password reset successful. You can now log in.",
+                200,
+            )
+
+        return CustomResponse(False, "Invalid action.", 400)
 
 @extend_schema(tags=["Authentication"])
 class UserProfileView(APIView):
