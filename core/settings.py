@@ -129,6 +129,10 @@ TEMPLATES = [
 ]
 
 
+# ─────────────────────────────────────────────────────────────
+# DATABASE
+# ─────────────────────────────────────────────────────────────
+
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
@@ -171,6 +175,10 @@ else:
     }
 
 
+# ─────────────────────────────────────────────────────────────
+# CACHE — Upstash Redis
+# ─────────────────────────────────────────────────────────────
+
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/1")
 
 CACHES = {
@@ -180,17 +188,14 @@ CACHES = {
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "CONNECTION_POOL_KWARGS": {
-                "ssl_cert_reqs": None, 
+                "ssl_cert_reqs": None,
             },
-            "IGNORE_EXCEPTIONS": True, 
+            "IGNORE_EXCEPTIONS": True,
         },
     }
 }
 
 
-# ─────────────────────────────────────────────────────────────
-# CELERY
-# ─────────────────────────────────────────────────────────────
 
 CELERY_BROKER_URL        = os.environ.get("CELERY_BROKER_URL",    "redis://redis:6379/0")
 CELERY_RESULT_BACKEND    = os.environ.get("CELERY_RESULT_BACKEND", "redis://redis:6379/0")
@@ -214,6 +219,7 @@ if CELERY_RESULT_BACKEND.startswith("rediss://"):
     CELERY_REDIS_BACKEND_USE_SSL = {
         "ssl_cert_reqs": "CERT_NONE"
     }
+
 
 
 AUTH_USER_MODEL = "accounts.CompanyUser"
@@ -246,6 +252,7 @@ SIMPLE_JWT = {
 }
 
 
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -270,7 +277,6 @@ REST_FRAMEWORK = {
         "user": "1000/day",
     },
 }
-
 
 
 SPECTACULAR_SETTINGS = {
@@ -357,7 +363,6 @@ CLOUDINARY_STORAGE = {
 DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
 
-
 STATIC_URL  = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
@@ -365,6 +370,9 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_URL  = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = os.environ.get(
     "CORS_ALLOWED_ORIGINS",
@@ -376,8 +384,22 @@ CSRF_TRUSTED_ORIGINS = os.environ.get(
     "http://localhost:3000"
 ).split(",")
 
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
 
+
+# ─────────────────────────────────────────────────────────────
+# EMAIL — Resend
+# ─────────────────────────────────────────────────────────────
 
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@ordfellow.com")
 SERVER_EMAIL       = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@ordfellow.com")
@@ -385,20 +407,33 @@ RESEND_API_KEY     = os.environ.get("RESEND_API_KEY",     "")
 RESEND_FROM_EMAIL  = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@ordfellow.com")
 
 
+# ─────────────────────────────────────────────────────────────
+# DAILY.CO
+# ─────────────────────────────────────────────────────────────
+
 DAILY_API_KEY   = os.environ.get("DAILY_API_KEY",   "")
 DAILY_API_URL   = os.environ.get("DAILY_API_URL",   "https://api.daily.co/v1")
 DAILY_SUBDOMAIN = os.environ.get("DAILY_SUBDOMAIN", "")
 
 
+# ─────────────────────────────────────────────────────────────
+# PAYSTACK
+# ─────────────────────────────────────────────────────────────
+
 PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY", "")
 PAYSTACK_PUBLIC_KEY = os.environ.get("PAYSTACK_PUBLIC_KEY", "")
 
 
+# ─────────────────────────────────────────────────────────────
+# OTP
+# ─────────────────────────────────────────────────────────────
 
 OTP_EXPIRY_SECONDS = int(os.environ.get("OTP_EXPIRY_SECONDS", 300))
 
 
-
+# ─────────────────────────────────────────────────────────────
+# SECURITY (Production only)
+# ─────────────────────────────────────────────────────────────
 
 if not DEBUG:
     SECURE_SSL_REDIRECT            = True
@@ -412,12 +447,21 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF    = True
     X_FRAME_OPTIONS                = "DENY"
 
+
+# ─────────────────────────────────────────────────────────────
+# INTERNATIONALISATION
+# ─────────────────────────────────────────────────────────────
+
 LANGUAGE_CODE      = "en-us"
 TIME_ZONE          = "Africa/Lagos"
 USE_I18N           = True
 USE_TZ             = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+
+# ─────────────────────────────────────────────────────────────
+# LOGGING
+# ─────────────────────────────────────────────────────────────
 
 LOGGING = {
     "version":                  1,
