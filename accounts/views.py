@@ -504,7 +504,8 @@ class ResetPasswordView(APIView):
                         502,
                     )
             user.set_password(new_password)
-            user.save(update_fields=["password"])
+            user.is_email_verified = True
+            user.save(update_fields=["password", "is_email_verified"])
 
             cache.delete(f"password_reset_token_{email}")
 
