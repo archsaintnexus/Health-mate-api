@@ -4,9 +4,13 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.utils import timezone
+from .models import DoctorOnboarding, OnboardingStatus
 
+from consultation.models import DoctorProfile, DoctorProfile
 
+from consultation.models import OnboardingStatus
 class DailyCoService:
     """Handles all Daily.co API interactions."""
 
@@ -15,8 +19,6 @@ class DailyCoService:
         "Authorization": f"Bearer {settings.DAILY_API_KEY}",
         "Content-Type": "application/json",
     }
-
-    # ── Room Management ──────────────────────────────────────────────────────
 
     @classmethod
     def create_room(cls, consultation_id: int) -> dict:
@@ -32,7 +34,7 @@ class DailyCoService:
                 "enable_knocking": False,
                 "start_video_off": False,
                 "start_audio_off": False,
-                "exp": 0,  # No expiry — we control via tokens
+                "exp": 0,  
             }
         }
 
@@ -109,20 +111,15 @@ class DailyCoService:
         response.raise_for_status()
         return response.json()
 
-    # ── Consultation Business Logic ──────────────────────────────────────────
-
     @classmethod
     def setup_consultation_room(cls, consultation) -> dict:
         """
         Create room and generate tokens for both
         patient and doctor.
         """
-        # Create the room
         room_data = cls.create_room(consultation.id)
         room_name = room_data["room_name"]
         room_url = room_data["room_url"]
-
-        # Generate patient token
         patient_token = cls.create_meeting_token(
             room_name=room_name,
             user_id=str(consultation.patient.id),
@@ -130,7 +127,6 @@ class DailyCoService:
             is_owner=False,
         )
 
-        # Generate doctor token (owner)
         doctor_token = cls.create_meeting_token(
             room_name=room_name,
             user_id=str(consultation.doctor.user.id),
@@ -220,4 +216,190 @@ class ConsultationService:
             MedicalRecord.objects.filter(consultation_id=consultation.id).update(status="available")
 
         return consultation, note
+
+class OnboardingService:
+
+    @staticmethod
+    def get_or_create_doctor_profile(user) -> "DoctorProfile":
+        """Get or create DoctorProfile for a provider user."""
+        from .models import DoctorProfile, DoctorOnboarding
+        profile, _ = DoctorProfile.objects.get_or_create(user=user)
+        DoctorOnboarding.objects.get_or_create(doctor=profile)
+        return profile
+
+    @staticmethod
+    def save_personal_info(user, data: dict) -> "DoctorProfile":
+        from .models import DoctorOnboarding
+        profile = OnboardingService.get_or_create_doctor_profile(user)
+        profile.phone_number = data.get("phone_number", profile.phone_number)
+        profile.date_of_birth = data.get("date_of_birth", profile.date_of_birth)
+        profile.gender = data.get("gender", profile.gender)
+        profile.city = data.get("city", profile.city)
+        profile.location = data.get("location", profile.location)
+        if data.get("profile_picture"):
+            profile.profile_picture = data["profile_picture"]
+        profile.save()
+
+        onboarding = profile.onboarding
+        onboarding.step_personal_done = True
+        onboarding.save(update_fields=["step_personal_done"])
+        return profile
+
+    @staticmethod
+    def save_professional_info(user, data: dict) -> "DoctorProfile":
+        profile = OnboardingService.get_or_create_doctor_profile(user)
+        profile.specialty = data.get("specialty", profile.specialty)
+        profile.bio = data.get("bio", profile.bio)
+        profile.clinical_expertise = data.get("clinical_expertise", profile.clinical_expertise)
+        profile.languages = data.get("languages", profile.languages)
+        profile.education = data.get("education", profile.education)
+        profile.experience_years = data.get("experience_years", profile.experience_years)
+        profile.consultation_type = data.get("consultation_type", profile.consultation_type)
+        profile.save()
+
+        onboarding = profile.onboarding
+        onboarding.step_professional_done = True
+        onboarding.save(update_fields=["step_professional_done"])
+        return profile
+
+    @staticmethod
+    def save_medical_info(user, data: dict) -> "DoctorProfile":
+        profile = OnboardingService.get_or_create_doctor_profile(user)
+        profile.medical_school = data.get("medical_school", profile.medical_school)
+        profile.graduation_year = data.get("graduation_year", profile.graduation_year)
+        profile.residency = data.get("residency", profile.residency)
+        profile.board_certifications = data.get("board_certifications", profile.board_certifications)
+        profile.professional_memberships = data.get("professional_memberships", profile.professional_memberships)
+        profile.save()
+
+        onboarding = profile.onboarding
+        onboarding.step_medical_done = True
+        onboarding.save(update_fields=["step_medical_done"])
+        return profile
+
+    @staticmethod
+    @transaction.atomic
+    def save_availability(user, slots: list) -> "DoctorProfile":
+        """
+        slots = [
+            {"day_of_week": "monday", "start_time": "09:00", "end_time": "17:00"},
+            {"day_of_week": "tuesday", "start_time": "09:00", "end_time": "17:00"},
+        ]
+        """
+        from .models import DoctorAvailability
+        profile = OnboardingService.get_or_create_doctor_profile(user)
+        DoctorAvailability.objects.filter(doctor=profile).delete()
+        DoctorAvailability.objects.bulk_create([
+            DoctorAvailability(
+                doctor=profile,
+                day_of_week=slot["day_of_week"],
+                start_time=slot["start_time"],
+                end_time=slot["end_time"],
+                is_active=True,
+            )
+            for slot in slots
+        ])
+
+        onboarding = profile.onboarding
+        onboarding.step_availability_done = True
+        onboarding.save(update_fields=["step_availability_done"])
+        return profile
+
+    @staticmethod
+    @transaction.atomic
+    def save_documents(user, data: dict) -> "DoctorProfile":
+        """
+        Final step — save documents and set status to PENDING.
+        """
+        from .models import DoctorDocument, DoctorOnboarding, OnboardingStatus
+        from django.utils import timezone
+
+        profile = OnboardingService.get_or_create_doctor_profile(user)
+
+        doc, _ = DoctorDocument.objects.get_or_create(doctor=profile)
+        if data.get("medical_license"):
+            doc.medical_license = data["medical_license"]
+        if data.get("medical_certificate"):
+            doc.medical_certificate = data["medical_certificate"]
+        doc.medical_license_number = data.get("medical_license_number", doc.medical_license_number)
+        doc.medical_license_expiry = data.get("medical_license_expiry", doc.medical_license_expiry)
+        doc.save()
+        onboarding = profile.onboarding
+        onboarding.step_documents_done = True
+        onboarding.status = OnboardingStatus.PENDING
+        onboarding.submitted_at = timezone.now()
+        onboarding.save(update_fields=[
+            "step_documents_done", "status", "submitted_at"
+        ])
+        from helper.tasks import send_a_mail
+        send_a_mail.delay(
+            title="Application Under Review — Health Mate",
+            message=f"""
+            <html>
+              <body style="font-family: Arial, sans-serif;">
+                <h3>Application Received</h3>
+                <p>Dear Dr. {user.full_name},</p>
+                <p>Your application has been submitted successfully
+                and is currently under review.</p>
+                <p>This process typically takes <strong>1-3 business days</strong>.</p>
+                <p>We will notify you once a decision has been made.</p>
+                <br/>
+                <p>The Health Mate Team</p>
+              </body>
+            </html>
+            """,
+            to=user.email,
+            is_html=True,
+        )
+
+        return profile
+
+    @staticmethod
+    def get_status(user) -> dict:
+        from .models import DoctorOnboarding
+        profile = OnboardingService.get_or_create_doctor_profile(user)
+        onboarding = profile.onboarding
+
+        return {
+            "status": onboarding.status,
+            "current_step": onboarding.current_step,
+            "can_access_dashboard": onboarding.can_access_dashboard,
+            "steps": {
+                "personal": onboarding.step_personal_done,
+                "professional": onboarding.step_professional_done,
+                "medical_info": onboarding.step_medical_done,
+                "availability": onboarding.step_availability_done,
+                "documents": onboarding.step_documents_done,
+            },
+            "rejection_reason": onboarding.rejection_reason or None,
+            "submitted_at": onboarding.submitted_at,
+            "reviewed_at": onboarding.reviewed_at,
+        }
+
+    @staticmethod
+    @transaction.atomic
+    def resubmit(user, data: dict) -> "DoctorProfile":
+        """
+        Doctor resubmits after rejection.
+        Resets status to PENDING.
+        """
+
+        profile = OnboardingService.get_or_create_doctor_profile(user)
+        onboarding = profile.onboarding
+
+        if onboarding.status != OnboardingStatus.REJECTED:
+            raise ValueError("Only rejected applications can be resubmitted.")
+        
+        OnboardingService.save_documents(user, data)
+        onboarding.refresh_from_db()
+        onboarding.rejection_reason = ""
+        onboarding.status = OnboardingStatus.PENDING
+        onboarding.submitted_at = timezone.now()
+        onboarding.save(update_fields=[
+            "rejection_reason", "status", "submitted_at"
+        ])
+
+        return profile
+    
+
     

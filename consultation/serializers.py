@@ -4,6 +4,13 @@ from .models import Consultation, ConsultationNote, DoctorProfile, ConsultationS
 from django.utils import timezone
 from datetime import timedelta
 
+from .models import (
+    DoctorAvailability,
+    DoctorDocument,
+    DoctorOnboarding,
+    DoctorProfile,
+)
+
 
 class DoctorProfileSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source="user.full_name", read_only=True)
@@ -168,4 +175,75 @@ class NotesSerializer(serializers.Serializer):
 
 
 AddConsultationNoteSerializer = NotesSerializer
+
+class OnboardingPersonalSerializer(serializers.Serializer):
+    phone_number = serializers.CharField(max_length=20)
+    date_of_birth = serializers.DateField()
+    gender = serializers.ChoiceField(choices=["male", "female", "other"])
+    city = serializers.CharField(max_length=100)
+    location = serializers.CharField(max_length=200)
+    profile_picture = serializers.ImageField(required=False)
+
+class OnboardingProfessionalSerializer(serializers.Serializer):
+    specialty = serializers.CharField(max_length=100)
+    bio = serializers.CharField()
+    clinical_expertise = serializers.CharField()
+    languages = serializers.CharField(max_length=200)
+    education = serializers.CharField()
+    experience_years = serializers.IntegerField(min_value=0)
+    consultation_type = serializers.ChoiceField(
+        choices=["video", "audio", "chat"]
+    )
+
+class OnboardingMedicalInfoSerializer(serializers.Serializer):
+    medical_school = serializers.CharField(max_length=200)
+    graduation_year = serializers.IntegerField()
+    residency = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    board_certifications = serializers.CharField(required=False, allow_blank=True)
+    professional_memberships = serializers.CharField(required=False, allow_blank=True)
+
+class AvailabilitySlotSerializer(serializers.Serializer):
+    day_of_week = serializers.ChoiceField(choices=[
+        "monday", "tuesday", "wednesday",
+        "thursday", "friday", "saturday", "sunday"
+    ])
+    start_time = serializers.TimeField()
+    end_time = serializers.TimeField()
+
+    def validate(self, data):
+        if data["start_time"] >= data["end_time"]:
+            raise serializers.ValidationError(
+                "start_time must be before end_time."
+            )
+        return data
+
+
+class OnboardingAvailabilitySerializer(serializers.Serializer):
+    slots = AvailabilitySlotSerializer(many=True, min_length=1)
+
+class OnboardingDocumentsSerializer(serializers.Serializer):
+    medical_license = serializers.ImageField()
+    medical_certificate = serializers.ImageField()
+    medical_license_number = serializers.CharField(max_length=100, required=False)
+    medical_license_expiry = serializers.DateField(required=False)
+
+class OnboardingStatusSerializer(serializers.ModelSerializer):
+    can_access_dashboard = serializers.BooleanField(read_only=True)
+    current_step = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = DoctorOnboarding
+        fields = [
+            "status",
+            "current_step",
+            "can_access_dashboard",
+            "step_personal_done",
+            "step_professional_done",
+            "step_medical_done",
+            "step_availability_done",
+            "step_documents_done",
+            "rejection_reason",
+            "submitted_at",
+            "reviewed_at",
+        ]
     

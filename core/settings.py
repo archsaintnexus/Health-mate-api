@@ -129,10 +129,6 @@ TEMPLATES = [
 ]
 
 
-# ─────────────────────────────────────────────────────────────
-# DATABASE
-# ─────────────────────────────────────────────────────────────
-
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
@@ -173,11 +169,6 @@ else:
             },
         }
     }
-
-
-# ─────────────────────────────────────────────────────────────
-# CACHE — Upstash Redis
-# ─────────────────────────────────────────────────────────────
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/1")
 
@@ -397,43 +388,24 @@ CORS_ALLOW_HEADERS = [
 ]
 
 
-# ─────────────────────────────────────────────────────────────
-# EMAIL — Resend
-# ─────────────────────────────────────────────────────────────
-
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@ordfellow.com")
 SERVER_EMAIL       = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@ordfellow.com")
 RESEND_API_KEY     = os.environ.get("RESEND_API_KEY",     "")
 RESEND_FROM_EMAIL  = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@ordfellow.com")
 
 
-# ─────────────────────────────────────────────────────────────
-# DAILY.CO
-# ─────────────────────────────────────────────────────────────
-
 DAILY_API_KEY   = os.environ.get("DAILY_API_KEY",   "")
 DAILY_API_URL   = os.environ.get("DAILY_API_URL",   "https://api.daily.co/v1")
 DAILY_SUBDOMAIN = os.environ.get("DAILY_SUBDOMAIN", "")
 
 
-# ─────────────────────────────────────────────────────────────
-# PAYSTACK
-# ─────────────────────────────────────────────────────────────
 
 PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY", "")
 PAYSTACK_PUBLIC_KEY = os.environ.get("PAYSTACK_PUBLIC_KEY", "")
 
 
-# ─────────────────────────────────────────────────────────────
-# OTP
-# ─────────────────────────────────────────────────────────────
-
 OTP_EXPIRY_SECONDS = int(os.environ.get("OTP_EXPIRY_SECONDS", 300))
 
-
-# ─────────────────────────────────────────────────────────────
-# SECURITY (Production only)
-# ─────────────────────────────────────────────────────────────
 
 if not DEBUG:
     SECURE_SSL_REDIRECT            = True
@@ -448,9 +420,6 @@ if not DEBUG:
     X_FRAME_OPTIONS                = "DENY"
 
 
-# ─────────────────────────────────────────────────────────────
-# INTERNATIONALISATION
-# ─────────────────────────────────────────────────────────────
 
 LANGUAGE_CODE      = "en-us"
 TIME_ZONE          = "Africa/Lagos"
@@ -458,10 +427,6 @@ USE_I18N           = True
 USE_TZ             = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-
-# ─────────────────────────────────────────────────────────────
-# LOGGING
-# ─────────────────────────────────────────────────────────────
 
 LOGGING = {
     "version":                  1,

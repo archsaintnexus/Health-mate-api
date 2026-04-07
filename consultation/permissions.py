@@ -1,5 +1,6 @@
 from rest_framework.permissions import BasePermission
 from accounts.models import UserRole
+from consultation.models import OnboardingStatus
 
 
 class IsDoctor(BasePermission):
@@ -41,4 +42,37 @@ class IsConsultationDoctor(BasePermission):
 
     def has_object_permission(self, request, view, obj):
         return obj.doctor.user == request.user
-    
+
+
+class IsApprovedDoctor(BasePermission):
+    """
+    Only approved doctors can access
+    doctor-specific endpoints.
+    """
+    message = "Your account is pending admin approval."
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not user.is_authenticated:
+            return False
+
+        if not hasattr(user, "doctor_profile"):
+            return False
+        onboarding = getattr(user.doctor_profile, "onboarding", None)
+        if not onboarding:
+            return False
+        return onboarding.status == "approved"
+
+
+class IsProviderUser(BasePermission):
+    """
+    Only users with role=provider can access
+    onboarding endpoints.
+    """
+    message = "Only medical professionals can access this."
+
+    def has_permission(self, request, view):
+        return (
+            request.user.is_authenticated
+            and request.user.role == "provider"
+        )
