@@ -172,17 +172,21 @@ else:
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/1")
 
+redis_cache_options = {
+    "CLIENT_CLASS": "django_redis.client.DefaultClient",
+    "IGNORE_EXCEPTIONS": True,
+}
+
+if REDIS_URL.startswith("rediss://"):
+    redis_cache_options["CONNECTION_POOL_KWARGS"] = {
+        "ssl_cert_reqs": "CERT_NONE",
+    }
+
 CACHES = {
     "default": {
         "BACKEND":  "django_redis.cache.RedisCache",
         "LOCATION": REDIS_URL,
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "CONNECTION_POOL_KWARGS": {
-                "ssl_cert_reqs": None,
-            },
-            "IGNORE_EXCEPTIONS": True,
-        },
+        "OPTIONS": redis_cache_options,
     }
 }
 
@@ -270,6 +274,18 @@ REST_FRAMEWORK = {
 }
 
 
+CONSULTATION_TYPE_ENUM_CHOICES = [
+    ("video", "Video"),
+    ("audio", "Audio"),
+    ("chat", "Chat"),
+]
+
+GENDER_ENUM_CHOICES = [
+    ("male", "Male"),
+    ("female", "Female"),
+    ("other", "Other"),
+]
+
 SPECTACULAR_SETTINGS = {
     "TITLE":       "Health Mate API",
     "DESCRIPTION": "A secure, production-ready healthcare platform API.",
@@ -312,8 +328,10 @@ SPECTACULAR_SETTINGS = {
     ],
 
     "ENUM_NAME_OVERRIDES": {
+        "ConsultationTypeEnum":       CONSULTATION_TYPE_ENUM_CHOICES,
         "AppointmentStatusEnum":      "appointments.models.AppointmentStatus",
         "ConsultationStatusEnum":     "consultation.models.ConsultationStatus",
+        "GenderEnum":                 GENDER_ENUM_CHOICES,
         "LabTestStatusEnum":          "medicals.models.LabTestStatus",
         "HomeCareRequestStatusEnum":  "homecare.models.HomeCareRequest.Status",
         "PharmacyOrderStatusEnum":    "pharmacy.models.PharmacyOrder.Status",
