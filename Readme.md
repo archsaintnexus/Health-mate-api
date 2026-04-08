@@ -1,6 +1,6 @@
 # Health Mate API
 
-> A secure, production-ready healthcare platform API built with Django REST Framework, Firebase Authentication, PostgreSQL (Supabase), Redis (Upstash), Celery, Cloudinary, and Docker.
+> A secure, production-ready healthcare platform API built with Django REST Framework, Firebase Authentication, PostgreSQL (Supabase), Redis (Upstash), Celery, Cloudinary, Docker, and DataGrip for SQL query visualization.
 
 [![Python](https://img.shields.io/badge/Python-3.11-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/Django-4.2-green)](https://djangoproject.com)
@@ -71,6 +71,7 @@ Health Mate is a telemedicine platform that connects patients with healthcare pr
 | Cloudinary | 1.44.1 | Media storage |
 | Docker | — | Containerisation |
 | Daily.co | Latest | Video consultations |
+| DataGrip | — | SQL query visualizer (database inspection/debugging) |
 | Gunicorn | 23.0.0 | Production WSGI server |
 | Paystack | — | Payment processing |
 | Whitenoise | 6.6.0 | Static files |
