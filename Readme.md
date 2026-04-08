@@ -1,6 +1,6 @@
 # Health Mate API
 
-> A secure, production-ready healthcare platform API built with Django REST Framework, Firebase Authentication, PostgreSQL (Supabase), Redis (Upstash), Celery, Cloudinary, Docker, and DataGrip for SQL query visualization.
+> A secure, production-ready healthcare platform API built with Django REST Framework, Firebase Authentication, PostgreSQL (Supabase), Redis (Upstash), Celery, Cloudinary, Docker, and DBeaver for SQL query visualization.
 
 [![Python](https://img.shields.io/badge/Python-3.11-blue)](https://python.org)
 [![Django](https://img.shields.io/badge/Django-4.2-green)](https://djangoproject.com)
@@ -17,17 +17,18 @@
 4. [System Design](#system-design)
 5. [Database Design](#database-design)
 6. [Entity Relationship Diagram (ERD)](#entity-relationship-diagram-erd)
-7. [Project Structure](#project-structure)
-8. [API Modules](#api-modules)
-9. [Authentication Flow](#authentication-flow)
-10. [Doctor Onboarding Flow](#doctor-onboarding-flow)
-11. [Consultation Flow](#consultation-flow)
-12. [Payment Flow](#payment-flow)
-13. [Environment Variables](#environment-variables)
-14. [Getting Started](#getting-started)
-15. [Deployment](#deployment)
-16. [API Endpoints](#api-endpoints)
-17. [Security](#security)
+7. [Database Queries & Visualization (DBeaver)](#database-queries--visualization-dbeaver)
+8. [Project Structure](#project-structure)
+9. [API Modules](#api-modules)
+10. [Authentication Flow](#authentication-flow)
+11. [Doctor Onboarding Flow](#doctor-onboarding-flow)
+12. [Consultation Flow](#consultation-flow)
+13. [Payment Flow](#payment-flow)
+14. [Environment Variables](#environment-variables)
+15. [Getting Started](#getting-started)
+16. [Deployment](#deployment)
+17. [API Endpoints](#api-endpoints)
+18. [Security](#security)
 
 ---
 
@@ -70,8 +71,8 @@ Health Mate is a telemedicine platform that connects patients with healthcare pr
 | Resend | — | Email delivery |
 | Cloudinary | 1.44.1 | Media storage |
 | Docker | — | Containerisation |
+| DBeaver | Latest | SQL query visualization & DB inspection |
 | Daily.co | Latest | Video consultations |
-| DataGrip | — | SQL query visualizer (database inspection/debugging) |
 | Gunicorn | 23.0.0 | Production WSGI server |
 | Paystack | — | Payment processing |
 | Whitenoise | 6.6.0 | Static files |
@@ -382,6 +383,37 @@ Medical record created automatically
 
 ## Entity Relationship Diagram (ERD)
 
+```mermaid
+erDiagram
+    COMPANYUSER ||--|| DOCTORPROFILE : has
+    DOCTORPROFILE ||--|| DOCTORONBOARDING : has
+    DOCTORPROFILE ||--|| DOCTORDOCUMENT : has
+    DOCTORPROFILE ||--o{ DOCTORAVAILABILITY : has
+
+    COMPANYUSER ||--o{ CONSULTATION : patient
+    DOCTORPROFILE ||--o{ CONSULTATION : doctor
+    CONSULTATION ||--|| CONSULTATIONNOTE : has
+
+    COMPANYUSER ||--o{ APPOINTMENT : books
+    DOCTORPROFILE ||--o{ APPOINTMENT : receives
+
+    COMPANYUSER ||--o{ MEDICALRECORD : owns
+    MEDICALRECORD ||--o{ PRESCRIPTION : includes
+    MEDICALRECORD ||--o{ LABTEST : includes
+    MEDICALRECORD ||--|| CAREPLAN : has
+
+    COMPANYUSER ||--o{ PHARMACYORDER : places
+    PHARMACYORDER ||--o{ ORDERITEM : contains
+    PRODUCT ||--o{ ORDERITEM : referenced_by
+
+    COMPANYUSER ||--o{ HOMECAREREQUEST : creates
+    HOMECARESERVICE ||--o{ HOMECAREREQUEST : assigned_to
+
+    COMPANYUSER ||--|| MEDICALINFORMATION : has
+    COMPANYUSER ||--|| EMERGENCYCONTACT : has
+    COMPANYUSER ||--o{ OTPCODE : receives
+```
+
 ```
 CompanyUser
 │
@@ -437,6 +469,72 @@ Product (1) ──────────── (M) OrderItem
 CompanyUser (1) ──────── (M) HomeCareRequest
 HomeCareService (1) ───── (M) HomeCareRequest
 ```
+
+---
+
+## Database Queries & Visualization (DBeaver)
+
+DBeaver is used to inspect, visualize, and query your Supabase (PostgreSQL) database for Health Mate API development and debugging.
+
+### Connecting DBeaver to Supabase
+
+1. Install DBeaver: https://dbeaver.io/download/
+2. Open DBeaver → **Database** → **New Database Connection**.
+3. Select **PostgreSQL**.
+4. Enter your Supabase connection details:
+   - **Host**: from your Supabase project
+   - **Port**: `5432`
+   - **Database**: your database name
+   - **Username / Password**: from Supabase
+5. Click **Test Connection**.
+6. Click **Finish**.
+
+### Running Queries
+
+- Use **Database Navigator** to browse schemas and tables.
+- Open **SQL Editor** to run ad-hoc and saved queries.
+
+Example: List all active patients
+
+```sql
+SELECT id, full_name, email, phone_number, is_active
+FROM accounts_companyuser
+WHERE role = 'patient' AND is_active = TRUE;
+```
+
+Example: Check upcoming confirmed appointments
+
+```sql
+SELECT
+    a.id,
+    c.full_name AS patient,
+    d.full_name AS doctor,
+    a.appointment_date,
+    a.appointment_time
+FROM appointments_appointment a
+JOIN accounts_companyuser c ON a.patient_id = c.id
+JOIN doctor_profiles dp ON a.doctor_id = dp.id
+JOIN accounts_companyuser d ON dp.user_id = d.id
+WHERE a.status = 'confirmed'
+ORDER BY a.appointment_date, a.appointment_time;
+```
+
+### Visualizing Relationships
+
+1. Right-click your schema in DBeaver.
+2. Select **ER Diagrams** → **Create New ER Diagram**.
+3. DBeaver auto-generates relationship mapping between tables.
+
+This is useful for:
+- Debugging foreign keys
+- Validating JOIN paths
+- Understanding complex relational flows
+
+### Tips
+
+- Use SQL Editor to test queries before integrating into API services.
+- Save frequently used queries in **Favorites**.
+- Use **Data Editor** to insert/update records for controlled testing.
 
 ---
 
