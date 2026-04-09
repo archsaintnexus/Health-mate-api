@@ -67,7 +67,7 @@ class CompanyUser(AbstractUser):
     date_of_birth = models.DateField(null=True, blank=True)
     gender = models.CharField(
         max_length=10,
-        choices=[("male", "Male"), ("female", "Female"), ("other", "Other")],
+        choices=[("Male", "Male"), ("Female", "Female"), ("Other", "Other")],
         null=True,
         blank=True,
     )

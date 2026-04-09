@@ -179,7 +179,7 @@ AddConsultationNoteSerializer = NotesSerializer
 class OnboardingPersonalSerializer(serializers.Serializer):
     phone_number = serializers.CharField(max_length=20)
     date_of_birth = serializers.DateField()
-    gender = serializers.ChoiceField(choices=["male", "female", "other"])
+    gender = serializers.ChoiceField(choices=["Male", "Female", "Other"])
     city = serializers.CharField(max_length=100)
     location = serializers.CharField(max_length=200)
     profile_picture = serializers.ImageField(required=False)
