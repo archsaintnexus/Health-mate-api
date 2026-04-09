@@ -62,7 +62,6 @@ class CompanyUser(AbstractUser):
     email = models.EmailField(unique=True)
     firebase_uid = models.CharField(max_length=128, unique=True, null=True, blank=True)
     full_name = models.CharField(max_length=150, blank=True, default="")
-    phone_number = models.CharField(max_length=20, blank=True, default="")
     role = models.CharField(max_length=20, choices=UserRole.choices, default=UserRole.PATIENT)
     is_email_verified = models.BooleanField(default=False)
     date_of_birth = models.DateField(null=True, blank=True)
@@ -73,6 +72,7 @@ class CompanyUser(AbstractUser):
         blank=True,
     )
     city = models.CharField(max_length=100, null=True, blank=True)
+    state = models.CharField(max_length=100, null=True, blank=True)
 
     groups = models.ManyToManyField(
         "auth.Group",
@@ -167,7 +167,7 @@ class OTPCode(models.Model):
         return True, "OTP verified successfully."
 
 
-# ── Desktop 9 — Medical Information ─────────────────────────────────────────
+# ──  Medical Information ─────────────────────────────────────────
 
 class MedicalInformation(models.Model):
     user = models.OneToOneField(
@@ -200,7 +200,7 @@ class MedicalInformation(models.Model):
         return f"Medical info for {self.user.email}"
 
 
-# ── Desktop 10 — Emergency Contact ──────────────────────────────────────────
+# ──  Emergency Contact ──────────────────────────────────────────
 
 class EmergencyContact(models.Model):
     user = models.OneToOneField(
@@ -208,10 +208,9 @@ class EmergencyContact(models.Model):
         on_delete=models.CASCADE,
         related_name="emergency_contact"
     )
-    name = models.CharField(max_length=150)
-    relationship = models.CharField(max_length=50)
-    phone_number = models.CharField(max_length=20)
-    number_of_next_of_kin = models.PositiveIntegerField(default=1)
+    next_of_kin_name = models.CharField(max_length=255)
+    relationship = models.CharField(max_length=100)
+    next_of_kin_phone = models.CharField(max_length=20)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

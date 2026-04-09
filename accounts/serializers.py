@@ -28,7 +28,6 @@ class FirebaseTokenMixin:
 class RegisterSerializer(serializers.Serializer, FirebaseTokenMixin):
     firebase_token = serializers.CharField(write_only=True)
     full_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
-    phone_number = serializers.CharField(required=False, allow_blank=True, max_length=20)
     date_of_birth = serializers.DateField(required=False, allow_null=True)
     gender = serializers.ChoiceField(
         choices=CompanyUser._meta.get_field("gender").choices,
@@ -37,6 +36,7 @@ class RegisterSerializer(serializers.Serializer, FirebaseTokenMixin):
         allow_blank=True
     )
     city = serializers.CharField(required=False, allow_blank=True, max_length=100)
+    state = serializers.CharField(required=False, allow_blank=True, max_length=100)
     role = serializers.ChoiceField(
         choices=UserRole.choices,
         required=False,
@@ -121,10 +121,10 @@ class PersonalInformationSerializer(serializers.ModelSerializer):
         model = CompanyUser
         fields = [
             "full_name",
-            "phone_number",
             "date_of_birth",
             "gender",
             "city",
+            "state",
         ]
 
     def validate_date_of_birth(self, value):
@@ -152,15 +152,10 @@ class EmergencyContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmergencyContact
         fields = [
-            "id",
-            "name",
+            "next_of_kin_name",
             "relationship",
-            "phone_number",
-            "number_of_next_of_kin",
-            "created_at",
-            "updated_at",
+            "next_of_kin_phone",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -175,10 +170,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "email",
             "firebase_uid",
             "full_name",
-            "phone_number",
             "date_of_birth",
             "gender",
             "city",
+            "state",
             "role",
             "is_email_verified",
             "profile_complete",

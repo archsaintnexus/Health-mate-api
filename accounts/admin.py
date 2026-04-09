@@ -9,12 +9,12 @@ class CompanyUserAdmin(UserAdmin):
     model = CompanyUser
     list_display = ("email", "full_name", "role", "is_email_verified", "is_active", "created_at")
     list_filter = ("role", "is_email_verified", "is_active", "created_at")
-    search_fields = ("email", "full_name", "phone_number", "firebase_uid")
+    search_fields = ("email", "full_name", "firebase_uid")
     ordering = ("-created_at",)
 
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Profile", {"fields": ("full_name", "phone_number", "firebase_uid", "role")}),
+        ("Profile", {"fields": ("full_name", "firebase_uid", "role")}),
         ("Status", {"fields": ("is_email_verified", "is_active", "is_staff", "is_superuser")}),
         ("Permissions", {"fields": ("groups", "user_permissions")}),
         ("Important dates", {"fields": ("last_login", "created_at", "updated_at")}),

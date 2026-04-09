@@ -126,10 +126,10 @@ class RegisterView(APIView):
             email=email,
             firebase_uid=firebase_uid,
             full_name=serializer.validated_data.get("full_name", ""),
-            phone_number=serializer.validated_data.get("phone_number", ""),
             date_of_birth=serializer.validated_data.get("date_of_birth"),
             gender=serializer.validated_data.get("gender"),
             city=serializer.validated_data.get("city"),
+            state=serializer.validated_data.get("state"),
             role=UserRole.PATIENT,
             is_active=True,
             is_email_verified=False,
@@ -163,6 +163,7 @@ class RegisterView(APIView):
                     "email": user.email,
                     "gender": user.gender,
                     "city": user.city,
+                    "state": user.state,
                     "date_of_birth": str(user.date_of_birth) if user.date_of_birth else None,
                 }
             },
@@ -419,7 +420,7 @@ class ResetPasswordView(APIView):
                 200,
             )
 
-        # ── Step 2 — Verify OTP → return reset_token ─────────
+       
         if action == "verify_otp":
             email    = request.data.get("email")
             otp_code = request.data.get("otp_code")
