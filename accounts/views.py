@@ -713,4 +713,35 @@ class EmergencyContactView(APIView):
 
         message = "Emergency contact saved successfully."
         return CustomResponse(True, message, 200, serializer.data)
+
+
+@extend_schema(tags=["Authentication"])
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=None,
+        responses={
+            200: OpenApiResponse(description="Logged out successfully."),
+            401: OpenApiResponse(description="Refresh token not found."),
+        },
+        description="Logout by blacklisting the refresh token and clearing auth cookies.",
+        tags=["Authentication"],
+    )
+    def post(self, request):
+        refresh_token = request.COOKIES.get("refresh_token")
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()  # Blacklist the refresh token
+            except Exception:
+                pass  # Token might already be invalid; proceed with cookie clearing
+
+        response = CustomResponse(True, "Logged out successfully.", 200)
+        
+        # Clear cookies
+        response.delete_cookie("access_token", path="/")
+        response.delete_cookie("refresh_token", path="/auth/token/refresh/")
+        
+        return response
     

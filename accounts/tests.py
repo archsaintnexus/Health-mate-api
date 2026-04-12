@@ -155,3 +155,51 @@ class AuthApiTests(TestCase):
         self.assertFalse(response.data["success"])
         self.assertEqual(response.data["message"], "Email is already verified.")
         mock_send_email_delay.assert_not_called()
+
+    @patch("accounts.serializers.verify_id_token")
+    def test_logout_clears_cookies_and_blacklists_refresh_token(self, mock_verify_id_token):
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        mock_verify_id_token.return_value = {"uid": "firebase-uid-logout", "email": "logout@user.com"}
+        user = CompanyUser.objects.create_user(
+            email="logout@user.com",
+            firebase_uid="firebase-uid-logout",
+            full_name="Logout User",
+            role=UserRole.PATIENT,
+            is_active=True,
+            is_email_verified=True,
+        )
+
+        # Login to get tokens
+        login_response = self.client.post(
+            "/auth/login/",
+            {"firebase_token": "dummy-token"},
+            format="json",
+        )
+        self.assertEqual(login_response.status_code, 200)
+
+        # Extract refresh token from cookies
+        refresh_token_value = login_response.cookies.get("refresh_token").value
+        access_token_value = login_response.cookies.get("access_token").value
+
+        # Set cookies for logout request
+        self.client.cookies["refresh_token"] = refresh_token_value
+        self.client.cookies["access_token"] = access_token_value
+
+        # Logout
+        logout_response = self.client.post("/auth/logout/")
+        self.assertEqual(logout_response.status_code, 200)
+        self.assertTrue(logout_response.data["success"])
+        self.assertEqual(logout_response.data["message"], "Logged out successfully.")
+
+        # Check cookies are cleared (set to empty)
+        self.assertEqual(logout_response.cookies.get("access_token").value, "")
+        self.assertEqual(logout_response.cookies.get("refresh_token").value, "")
+
+        # Check refresh token is blacklisted
+        from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
+        self.assertTrue(BlacklistedToken.objects.filter(token__jti=RefreshToken(refresh_token_value, verify=False).payload['jti']).exists())
+
+        # Try to refresh token - should fail
+        refresh_response = self.client.post("/auth/token/refresh/")
+        self.assertEqual(refresh_response.status_code, 401)
