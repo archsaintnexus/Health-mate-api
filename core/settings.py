@@ -244,13 +244,21 @@ SIMPLE_JWT = {
     "AUTH_TOKEN_CLASSES":       ("rest_framework_simplejwt.tokens.AccessToken",),
     "TOKEN_TYPE_CLAIM":         "token_type",
     "JTI_CLAIM":                "jti",
+
+    # Store tokens in HttpOnly cookies
+    "AUTH_COOKIE":              "access_token",
+    "AUTH_COOKIE_REFRESH":      "refresh_token",
+    "AUTH_COOKIE_SECURE":       not DEBUG,
+    "AUTH_COOKIE_HTTP_ONLY":    True,
+    "AUTH_COOKIE_PATH":         "/",
+    "AUTH_COOKIE_SAMESITE":     "Lax",
 }
 
 
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "accounts.authentication.CookieJWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",

@@ -1,5 +1,6 @@
 import os
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiResponse
@@ -72,6 +73,33 @@ def _build_otp_email(display_name: str, code: str, reason: str):
     """
 
 
+def _set_auth_cookies(response, access_token: str, refresh_token: str):
+    """Set JWT tokens as HttpOnly cookies."""
+    is_production = not settings.DEBUG
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        max_age=900,
+        httponly=True,
+        secure=is_production,
+        samesite="Lax",
+        path="/",
+    )
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        max_age=604800,
+        httponly=True,
+        secure=is_production,
+        samesite="Lax",
+        path="/auth/token/refresh/",
+    )
+
+    return response
+
+
 @extend_schema_view(
     post=extend_schema(
         tags=["Authentication"],
@@ -90,6 +118,49 @@ class AuthTokenRefreshView(TokenRefreshView):
 )
 class AuthTokenVerifyView(TokenVerifyView):
     permission_classes = [AllowAny]
+
+
+@extend_schema(tags=["Authentication"])
+class CookieTokenRefreshView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        request=None,
+        responses={
+            200: OpenApiResponse(description="Token refreshed successfully."),
+            401: OpenApiResponse(description="Refresh token not found, invalid, or expired."),
+        },
+        description="Refresh access token using refresh token from HttpOnly cookie.",
+        tags=["Authentication"],
+    )
+    def post(self, request):
+        refresh_token = request.COOKIES.get("refresh_token")
+        if not refresh_token:
+            return CustomResponse(False, "Refresh token not found.", 401)
+
+        try:
+            refresh = RefreshToken(refresh_token)
+            access = str(refresh.access_token)
+
+            response = CustomResponse(
+                True,
+                "Token refreshed.",
+                200,
+                {"user": None},
+            )
+
+            response.set_cookie(
+                key="access_token",
+                value=access,
+                max_age=900,
+                httponly=True,
+                secure=not settings.DEBUG,
+                samesite="Lax",
+                path="/",
+            )
+            return response
+        except Exception:
+            return CustomResponse(False, "Invalid or expired refresh token.", 401)
 
 @extend_schema(tags=["Authentication"])
 class RegisterView(APIView):
@@ -177,13 +248,13 @@ class LoginView(APIView):
     @extend_schema(
         request=LoginSerializer,
         responses={
-            200: OpenApiResponse(description="Login successful. JWT tokens returned."),
+            200: OpenApiResponse(description="Login successful. JWT tokens set in HttpOnly cookies."),
             400: OpenApiResponse(description="Validation error"),
             401: OpenApiResponse(description="Firebase account mismatch"),
             403: OpenApiResponse(description="Email not verified"),
             404: OpenApiResponse(description="No account found"),
         },
-        description="Login using a Firebase ID token. Returns JWT access and refresh tokens.",
+        description="Login using a Firebase ID token. JWT access and refresh tokens are set in HttpOnly cookies.",
         tags=["Authentication"],
     )
     def post(self, request):
@@ -215,15 +286,21 @@ class LoginView(APIView):
         access["role"] = user.role
         access["email"] = user.email
 
-        return CustomResponse(
+        response = CustomResponse(
             True,
             "Login successful.",
             200,
             {
-                "tokens": {"access": str(access), "refresh": str(refresh)},
                 "user": UserProfileSerializer(user).data,
             },
         )
+
+        _set_auth_cookies(
+            response=response,
+            access_token=str(access),
+            refresh_token=str(refresh),
+        )
+        return response
 
 
 @extend_schema(tags=["Authentication"])
@@ -277,18 +354,20 @@ class VerifyOtpView(APIView):
             access["role"]   = user.role
             access["email"]  = user.email
 
-            return CustomResponse(
+            response = CustomResponse(
                 True,
                 "Email verified successfully.",
                 200,
                 {
-                    "tokens": {
-                        "access":  str(access),
-                        "refresh": str(refresh),
-                    },
                     "user": UserProfileSerializer(user).data,
                 },
             )
+            _set_auth_cookies(
+                response=response,
+                access_token=str(access),
+                refresh_token=str(refresh),
+            )
+            return response
         return CustomResponse(True, message, 200)
 
 
