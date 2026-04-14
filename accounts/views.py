@@ -82,8 +82,8 @@ def _set_auth_cookies(response, access_token: str, refresh_token: str):
         value=access_token,
         max_age=900,
         httponly=True,
-        secure=is_production,
-        samesite="Lax",
+        secure=settings.AUTH_COOKIE_SECURE,
+        samesite="None",
         path="/",
     )
 
@@ -92,8 +92,8 @@ def _set_auth_cookies(response, access_token: str, refresh_token: str):
         value=refresh_token,
         max_age=604800,
         httponly=True,
-        secure=is_production,
-        samesite="Lax",
+        secure=settings.AUTH_COOKIE_SECURE,
+        samesite="None",
         path="/auth/token/refresh/",
     )
 
@@ -154,8 +154,8 @@ class CookieTokenRefreshView(APIView):
                 value=access,
                 max_age=900,
                 httponly=True,
-                secure=not settings.DEBUG,
-                samesite="Lax",
+                secure=settings.AUTH_COOKIE_SECURE,
+                samesite="None",
                 path="/",
             )
             return response

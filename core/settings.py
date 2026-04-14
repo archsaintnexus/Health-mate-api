@@ -19,6 +19,10 @@ ALLOWED_HOSTS = os.environ.get(
     "localhost,127.0.0.1"
 ).split(",")
 
+# Control whether auth cookies require a secure (HTTPS) connection.
+# In development this will be False; in production set DEBUG=False so it becomes True.
+AUTH_COOKIE_SECURE = not DEBUG
+
 
 def _load_firebase_credentials() -> str:
     b64 = os.environ.get("FIREBASE_CREDENTIALS_BASE64")
@@ -248,7 +252,8 @@ SIMPLE_JWT = {
     # Store tokens in HttpOnly cookies
     "AUTH_COOKIE":              "access_token",
     "AUTH_COOKIE_REFRESH":      "refresh_token",
-    "AUTH_COOKIE_SECURE":       True,
+    # Use the global AUTH_COOKIE_SECURE setting for cookie secure flag
+    "AUTH_COOKIE_SECURE":       AUTH_COOKIE_SECURE,
     "AUTH_COOKIE_HTTP_ONLY":    True,
     "AUTH_COOKIE_PATH":         "/",
     "AUTH_COOKIE_SAMESITE":     "None",
