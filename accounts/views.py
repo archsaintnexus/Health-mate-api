@@ -162,6 +162,21 @@ class CookieTokenRefreshView(APIView):
         except Exception:
             return CustomResponse(False, "Invalid or expired refresh token.", 401)
 
+
+@extend_schema(tags=["Authentication"])
+class MeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=None,
+        responses={200: OpenApiResponse(description="Authenticated user returned."), 401: OpenApiResponse(description="Unauthorized")},
+        description="Return the currently authenticated user (read from HttpOnly cookie).",
+        tags=["Authentication"],
+    )
+    def get(self, request):
+        user = request.user
+        return CustomResponse(True, "Authenticated", 200, {"user": UserProfileSerializer(user).data})
+
 @extend_schema(tags=["Authentication"])
 class RegisterView(APIView):
     permission_classes = [AllowAny]
