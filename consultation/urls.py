@@ -19,3 +19,5 @@ urlpatterns = [
     path("doctors/<int:pk>/",        views.DoctorDetailView.as_view(),          name="doctor-detail"),
 ]
 
+
+

@@ -1,10 +1,14 @@
+from datetime import datetime
+
 from django.db import transaction
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from helper.response import CustomResponse
-from consultation.models import DoctorProfile
+from consultation.models import Consultation, DoctorProfile
+from consultation.services import ConsultationService
 from consultation.serializers import DoctorProfileSerializer
 from .models import Appointment, AppointmentStatus
 from .permissions import IsAppointmentParticipant, IsAppointmentPatient
@@ -238,6 +242,92 @@ class AppointmentDetailView(APIView):
             "Appointment retrieved successfully.",
             200,
             serializer.data,
+        )
+
+
+@extend_schema(tags=["Appointments"])
+class JoinAppointmentConsultationView(APIView):
+    permission_classes = [IsAuthenticated, IsAppointmentParticipant]
+
+    @extend_schema(
+        operation_id="appointments_join_consultation",
+        request=None,
+        responses={200: OpenApiResponse(description="Consultation join data returned.")},
+        description=(
+            "Create or fetch consultation for an appointment and return "
+            "Daily room_url + token for the authenticated participant."
+        ),
+        tags=["Appointments"],
+    )
+    @transaction.atomic
+    def post(self, request, pk):
+        appointment = Appointment.objects.filter(
+            pk=pk
+        ).select_related("patient", "doctor__user").first()
+        if not appointment:
+            return CustomResponse(False, "Appointment not found.", 404)
+
+        self.check_object_permissions(request, appointment)
+
+        if appointment.status not in [
+            AppointmentStatus.PENDING,
+            AppointmentStatus.CONFIRMED,
+        ]:
+            return CustomResponse(
+                False,
+                "Only pending or confirmed appointments can join consultation.",
+                400,
+            )
+
+        if appointment.consultation_mode == "in_person":
+            return CustomResponse(
+                False,
+                "In-person appointments cannot be joined via Daily.",
+                400,
+            )
+
+        scheduled_at = datetime.combine(
+            appointment.appointment_date,
+            appointment.appointment_time,
+        )
+        if timezone.is_naive(scheduled_at):
+            scheduled_at = timezone.make_aware(
+                scheduled_at,
+                timezone.get_current_timezone(),
+            )
+
+        consultation = Consultation.objects.filter(
+            patient=appointment.patient,
+            doctor=appointment.doctor,
+            scheduled_at=scheduled_at,
+        ).first()
+
+        if not consultation:
+            consultation = Consultation.objects.create(
+                patient=appointment.patient,
+                doctor=appointment.doctor,
+                consultation_type=appointment.consultation_mode,
+                scheduled_at=scheduled_at,
+                reason=appointment.reason,
+                is_paid=True,
+            )
+
+        try:
+            join_payload = ConsultationService.join_consultation(
+                consultation=consultation,
+                user=request.user,
+            )
+        except Exception as e:
+            return CustomResponse(False, str(e), 400)
+
+        return CustomResponse(
+            True,
+            "Appointment consultation join data returned.",
+            200,
+            {
+                "appointment_id": appointment.id,
+                **join_payload,
+            },
         )
 
 

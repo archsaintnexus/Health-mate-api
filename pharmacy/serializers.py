@@ -339,4 +339,3 @@ class PharmacyNotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = PharmacyNotification
         fields = ["id", "title", "message", "is_read", "created_at"]
-        

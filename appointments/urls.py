@@ -13,6 +13,7 @@ urlpatterns = [
     path("", views.AppointmentListView.as_view(), name="appointment-list"),
     path("book/", views.BookAppointmentView.as_view(), name="appointment-book"),
     path("<int:pk>/", views.AppointmentDetailView.as_view(), name="appointment-detail"),
+    path("<int:pk>/join/", views.JoinAppointmentConsultationView.as_view(), name="appointment-join-consultation"),
     path("<int:pk>/cancel/", views.CancelAppointmentView.as_view(), name="appointment-cancel"),
     path("<int:pk>/reschedule/", views.RescheduleAppointmentView.as_view(), name="appointment-reschedule"),
 ]
