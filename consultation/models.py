@@ -291,7 +291,7 @@ class Consultation(models.Model):
                 and self.scheduled_at - window <= now <= self.scheduled_at + window
             )
 
-        before_window = timedelta(minutes=15)
+        before_window = timedelta(minutes=2)
         after_window  = timedelta(minutes=60)
         return (
             self.status in [

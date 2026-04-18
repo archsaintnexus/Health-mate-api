@@ -148,13 +148,13 @@ class ConsultationService:
     @staticmethod
     def join_consultation(consultation, user) -> dict:
         now = timezone.now()
-        window_start = consultation.scheduled_at - timedelta(minutes=15)
+        window_start = consultation.scheduled_at - timedelta(minutes=2)
         window_end = consultation.scheduled_at + timedelta(minutes=60)
 
         if not (window_start <= now <= window_end):
             raise ValidationError(
                 "Cannot join at this time. "
-                "You can join within 15 minutes of your scheduled time."
+                "You can join within 2 minutes of your scheduled time."
             )
 
         if consultation.status in ["completed", "cancelled", "missed"]:

@@ -125,7 +125,7 @@ class ConsultationListSerializer(serializers.ModelSerializer):
     @extend_schema_field(serializers.BooleanField)
     def get_can_join(self, obj) -> bool:
         now = timezone.now()
-        window_start = obj.scheduled_at - timedelta(minutes=15)
+        window_start = obj.scheduled_at - timedelta(minutes=2)
         window_end = obj.scheduled_at + timedelta(minutes=60)
         return (
             window_start <= now <= window_end
