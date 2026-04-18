@@ -318,6 +318,7 @@ class JoinAppointmentConsultationView(APIView):
                 user=request.user,
             )
         except Exception as e:
+            print("❌ JOIN ERROR:", str(e))
             return CustomResponse(False, str(e), 400)
 
         return CustomResponse(
