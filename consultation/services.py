@@ -15,10 +15,12 @@ class DailyCoService:
     """Handles all Daily.co API interactions."""
 
     BASE_URL = settings.DAILY_API_URL
-    HEADERS = {
-        "Authorization": f"Bearer {settings.DAILY_API_KEY}",
-        "Content-Type": "application/json",
-    }
+    @classmethod
+    def get_headers(cls):
+        return {
+            "Authorization": f"Bearer {settings.DAILY_API_KEY}",
+            "Content-Type": "application/json",
+        }
 
     @classmethod
     def create_room(cls, consultation_id: int) -> dict:
@@ -41,7 +43,7 @@ class DailyCoService:
         response = requests.post(
             f"{cls.BASE_URL}/rooms",
             json=payload,
-            headers=cls.HEADERS,
+            headers=cls.get_headers(),
             timeout=30,
         )
         response.raise_for_status()
@@ -81,7 +83,7 @@ class DailyCoService:
         response = requests.post(
             f"{cls.BASE_URL}/meeting-tokens",
             json=payload,
-            headers=cls.HEADERS,
+            headers=cls.get_headers(),
             timeout=30,
         )
         response.raise_for_status()
@@ -93,7 +95,7 @@ class DailyCoService:
         try:
             response = requests.delete(
                 f"{cls.BASE_URL}/rooms/{room_name}",
-                headers=cls.HEADERS,
+                headers=cls.get_headers(),
                 timeout=30,
             )
             return response.status_code == 200
@@ -105,7 +107,7 @@ class DailyCoService:
         """Get room details from Daily.co."""
         response = requests.get(
             f"{cls.BASE_URL}/rooms/{room_name}",
-            headers=cls.HEADERS,
+            headers=cls.get_headers(),
             timeout=30,
         )
         response.raise_for_status()
