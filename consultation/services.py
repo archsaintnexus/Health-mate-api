@@ -1,4 +1,5 @@
 import requests
+import time
 import uuid
 from datetime import timedelta
 
@@ -36,7 +37,7 @@ class DailyCoService:
                 "enable_knocking": False,
                 "start_video_off": False,
                 "start_audio_off": False,
-                "exp": 0,  
+                "exp": int(time.time()) + 3600,
             }
         }
 
@@ -64,7 +65,6 @@ class DailyCoService:
         expiry_minutes: int = 60,
     ) -> str:
         """Create a meeting token for a participant."""
-        import time
         exp = int(time.time()) + (expiry_minutes * 60)
 
         payload = {
