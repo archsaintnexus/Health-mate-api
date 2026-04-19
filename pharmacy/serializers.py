@@ -24,7 +24,7 @@ class PharmacyCategorySerializer(serializers.ModelSerializer):
         fields = ["id", "name", "slug", "image"]
 
     def get_image(self, obj) -> str | None:
-        return obj.image.url if obj.image else None
+        return str(obj.image) if obj.image else None
 
 
 class PharmacyProductSerializer(serializers.ModelSerializer):
@@ -53,7 +53,7 @@ class PharmacyProductSerializer(serializers.ModelSerializer):
         ]
 
     def get_image_url(self, obj) -> str | None:
-        return obj.image.url if obj.image else None
+        return str(obj.image) if obj.image else None
     
 
 class CartItemSerializer(serializers.ModelSerializer):
@@ -165,10 +165,7 @@ class PharmacyOrderItemSerializer(serializers.ModelSerializer):
         ]
 
     def get_product_image(self, obj) -> str | None:
-        return obj.product.image.url if obj.product.image else None
-
-    def get_line_total(self, obj) -> Decimal:
-        return obj.line_total
+        return str(obj.product.image) if obj.product.image else None
 
 
 class OrderTrackingEventSerializer(serializers.ModelSerializer):
