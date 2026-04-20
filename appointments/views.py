@@ -319,7 +319,11 @@ class JoinAppointmentConsultationView(APIView):
             )
         except Exception as e:
             print("❌ JOIN ERROR:", str(e))
-            return CustomResponse(False, str(e), 400)
+            return CustomResponse(
+                False,
+                "Unable to join consultation at this time. Please try again later.",
+                400,
+            )
 
         return CustomResponse(
             True,
