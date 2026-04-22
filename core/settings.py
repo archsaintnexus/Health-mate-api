@@ -252,7 +252,6 @@ SIMPLE_JWT = {
     # Store tokens in HttpOnly cookies
     "AUTH_COOKIE":              "access_token",
     "AUTH_COOKIE_REFRESH":      "refresh_token",
-    # Use the global AUTH_COOKIE_SECURE setting for cookie secure flag
     "AUTH_COOKIE_SECURE":       AUTH_COOKIE_SECURE,
     "AUTH_COOKIE_HTTP_ONLY":    True,
     "AUTH_COOKIE_PATH":         "/",
@@ -393,18 +392,17 @@ MEDIA_URL  = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 
-# ✅ REQUIRED
+# ✅ Fixed — Removed CORS_ALLOW_ALL_ORIGINS to prevent conflict
 CORS_ALLOW_CREDENTIALS = True
 
-# ✅ Allow custom domain + local dev
 CORS_ALLOWED_ORIGINS = os.environ.get(
     "CORS_ALLOWED_ORIGINS",
-    "http://localhost:3000,https://healthmate.archsaintnexus.com"
+    "http://localhost:3000"
 ).split(",")
 
 CSRF_TRUSTED_ORIGINS = os.environ.get(
     "CSRF_TRUSTED_ORIGINS",
-    "http://localhost:3000,https://healthmate.archsaintnexus.com"
+    "http://localhost:3000"
 ).split(",")
 
 CORS_ALLOW_HEADERS = [
@@ -418,9 +416,6 @@ CORS_ALLOW_HEADERS = [
     "x-csrftoken",
     "x-requested-with",
 ]
-
-CSRF_COOKIE_SAMESITE = "None"
-SESSION_COOKIE_SAMESITE = "None"
 
 
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@ordfellow.com")
@@ -443,7 +438,7 @@ OTP_EXPIRY_SECONDS = int(os.environ.get("OTP_EXPIRY_SECONDS", 300))
 
 
 if not DEBUG:
-    SECURE_SSL_REDIRECT            = True
+    SECURE_SSL_REDIRECT            = False  # ✅ Fixed — Render handles SSL itself
     SECURE_HSTS_SECONDS            = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD            = True
