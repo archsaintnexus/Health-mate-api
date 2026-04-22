@@ -417,7 +417,6 @@ class RescheduleAppointmentView(APIView):
                 False, "Validation error", 400, serializer.errors
             )
 
-        # Create new appointment
         new_appointment = Appointment.objects.create(
             patient=appointment.patient,
             doctor=appointment.doctor,
@@ -439,4 +438,4 @@ class RescheduleAppointmentView(APIView):
             201,
             AppointmentSerializer(new_appointment).data,
         )
-    
+   

@@ -393,17 +393,18 @@ MEDIA_URL  = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 
-CORS_ALLOW_ALL_ORIGINS = True
+# ✅ REQUIRED
 CORS_ALLOW_CREDENTIALS = True
 
+# ✅ Allow custom domain + local dev
 CORS_ALLOWED_ORIGINS = os.environ.get(
     "CORS_ALLOWED_ORIGINS",
-    "http://localhost:3000"
+    "http://localhost:3000,https://healthmate.archsaintnexus.com"
 ).split(",")
 
 CSRF_TRUSTED_ORIGINS = os.environ.get(
     "CSRF_TRUSTED_ORIGINS",
-    "http://localhost:3000"
+    "http://localhost:3000,https://healthmate.archsaintnexus.com"
 ).split(",")
 
 CORS_ALLOW_HEADERS = [
@@ -417,6 +418,9 @@ CORS_ALLOW_HEADERS = [
     "x-csrftoken",
     "x-requested-with",
 ]
+
+CSRF_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SAMESITE = "None"
 
 
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@ordfellow.com")
